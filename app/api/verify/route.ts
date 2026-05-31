@@ -36,7 +36,7 @@ Your verdict must ALWAYS be valid JSON with this exact shape:
   "verdict": "REAL" | "FAKE" | "SUSPICIOUS" | "UNVERIFIABLE",
   "confidence": 0-100,
   "summary": "One paragraph explanation of your finding",
-  "sources": ["url1", "url2"],
+  "sources": ["url1", "url2", "url3", "url4", "url5"],
   "flags": ["list of red flags if any"]
 }
 
@@ -46,6 +46,8 @@ Rules:
 - If multiple credible sources corroborate the claim, lean toward REAL
 - If no sources found at all, return UNVERIFIABLE
 - Always use the search tool before making a verdict — never guess
+- Include ALL relevant sources found in the sources array — minimum 3 when available, up to 8. Never truncate sources.
+- Always respond in the same language as the input claim or URL content
 - Return ONLY the JSON object, no markdown, no preamble`
 
 // ---------------------------------------------------------------------------
@@ -67,7 +69,7 @@ export async function POST(req: NextRequest) {
       : `Verify the following: ${input}`
 
     const { text, steps } = await generateText({
-      model: groq('llama-3.3-70b-versatile'),
+      model: groq('llama-3.1-8b-instant'),
       system: SYSTEM_PROMPT,
       prompt,
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -201,10 +203,6 @@ export async function POST(req: NextRequest) {
         }
       })
       console.log('\n=== FINAL TEXT ===\n', text)
-      steps.forEach((s, i) => {
-        console.log(`\nStep ${i+1} text:`, JSON.stringify(s.text))
-        console.log(`Step ${i+1} toolResults:`, JSON.stringify(s.toolResults?.map((r: {result: unknown}) => JSON.stringify(r.result).slice(0, 100))))
-      })
     }
 
     // --- Parse verdict ---
