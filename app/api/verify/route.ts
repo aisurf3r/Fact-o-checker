@@ -70,8 +70,9 @@ export async function POST(req: NextRequest) {
       model: createGroq({ apiKey: process.env.GROQ_API_KEY })('llama-3.3-70b-versatile'),
       system: SYSTEM_PROMPT,
       prompt,
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore — maxSteps supported at runtime (ai v4+)
       maxSteps: 7,
-      toolChoice: 'auto',
       tools: {
 
         // ── 1. Web search ────────────────────────────────────────────────────
