@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       : `Verify the following: ${input}`
 
     const { text, steps } = await generateText({
-      model: groq('llama-3.1-8b-instant'),
+      model: groq('llama-3.3-70b-versatile'),
       system: SYSTEM_PROMPT,
       prompt,
       // @ts-ignore
