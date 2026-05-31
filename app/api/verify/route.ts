@@ -1,0 +1,254 @@
+import { createGroq } from '@ai-sdk/groq'
+import { generateText, tool } from 'ai'
+import { z } from 'zod'
+import { NextRequest, NextResponse } from 'next/server'
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Extracts the hostname from a URL string. Returns null if input is not a URL. */
+function extractDomain(input: string): string | null {
+  try {
+    const url = new URL(input.trim())
+    // Only accept http/https — avoids false positives on "javascript:", etc.
+    if (!['http:', 'https:'].includes(url.protocol)) return null
+    return url.hostname.replace(/^www\./, '')
+  } catch {
+    return null
+  }
+}
+
+// ---------------------------------------------------------------------------
+// System prompt
+// ---------------------------------------------------------------------------
+
+const SYSTEM_PROMPT = `You are a Senior OSINT Officer specialized in disinformation detection.
+
+When given a URL or a news claim, your job is to:
+1. Search for the claim or URL using the tavily_search tool to find corroborating or contradicting sources
+2. If a domain is provided in the prompt, ALWAYS call virustotal_check AND whois_lookup on it before forming a verdict
+3. Analyze the results for factual discrepancies and infrastructure red flags
+4. Return a structured JSON verdict
+
+Your verdict must ALWAYS be valid JSON with this exact shape:
+{
+  "verdict": "REAL" | "FAKE" | "SUSPICIOUS" | "UNVERIFIABLE",
+  "confidence": 0-100,
+  "summary": "One paragraph explanation of your finding",
+  "sources": ["url1", "url2"],
+  "flags": ["list of red flags if any"]
+}
+
+Rules:
+- If a domain is younger than 30 days, set verdict to SUSPICIOUS and add "Domain registered less than 30 days ago" to flags
+- If VirusTotal reports malicious or suspicious votes > 0, add "Domain flagged by VirusTotal" to flags
+- If multiple credible sources corroborate the claim, lean toward REAL
+- If no sources found at all, return UNVERIFIABLE
+- Always use the search tool before making a verdict — never guess
+- Return ONLY the JSON object, no markdown, no preamble`
+
+// ---------------------------------------------------------------------------
+// Route handler
+// ---------------------------------------------------------------------------
+
+export async function POST(req: NextRequest) {
+  try {
+    const { input } = await req.json()
+
+    if (!input || typeof input !== 'string') {
+      return NextResponse.json({ error: 'Missing input' }, { status: 400 })
+    }
+
+    // --- Domain extraction (Option B: deterministic, pre-agent) ---
+    const domain = extractDomain(input)
+    const prompt = domain
+      ? `Verify the following: ${input}\n\nExtracted domain for infrastructure checks: ${domain}`
+      : `Verify the following: ${input}`
+
+    const { text, steps } = await generateText({
+      model: createGroq({ apiKey: process.env.GROQ_API_KEY })('llama-3.3-70b-versatile'),
+      system: SYSTEM_PROMPT,
+      prompt,
+      maxSteps: 7,
+      toolChoice: 'auto',
+      tools: {
+
+        // ── 1. Web search ────────────────────────────────────────────────────
+        tavily_search: tool({
+          description:
+            'Search the web for real-time information to verify claims or investigate URLs.',
+          parameters: z.object({
+            query: z.string().describe('The search query to investigate'),
+          }),
+          execute: async ({ query }) => {
+            const res = await fetch('https://api.tavily.com/search', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                api_key: process.env.TAVILY_API_KEY,
+                query,
+                search_depth: 'basic',
+                max_results: 5,
+                include_answer: true,
+              }),
+            })
+
+            if (!res.ok) return { error: `Tavily error: ${res.status}`, results: [] }
+
+            const data = await res.json()
+            return {
+              answer: data.answer ?? null,
+              results: (data.results ?? []).map((r: {
+                title: string; url: string; content: string; score: number
+              }) => ({
+                title: r.title,
+                url: r.url,
+                snippet: r.content?.slice(0, 300),
+                score: r.score,
+              })),
+            }
+          },
+        }),
+
+        // ── 2. VirusTotal domain reputation ──────────────────────────────────
+        virustotal_check: tool({
+          description:
+            'Check a domain\'s reputation and malware history via VirusTotal. Use this whenever a domain is available.',
+          parameters: z.object({
+            domain: z.string().describe('The domain to check, e.g. "suspicious-news.net"'),
+          }),
+          execute: async ({ domain }) => {
+            const res = await fetch(
+              `https://www.virustotal.com/api/v3/domains/${encodeURIComponent(domain)}`,
+              {
+                headers: { 'x-apikey': process.env.VIRUSTOTAL_API_KEY ?? '' },
+              }
+            )
+
+            if (!res.ok) return { error: `VirusTotal error: ${res.status}` }
+
+            const data = await res.json()
+            const stats = data?.data?.attributes?.last_analysis_stats ?? {}
+            const reputation = data?.data?.attributes?.reputation ?? null
+            const categories = data?.data?.attributes?.categories ?? {}
+
+            return {
+              domain,
+              reputation,           // negative = bad, 0 = unknown, positive = trusted
+              malicious: stats.malicious ?? 0,
+              suspicious: stats.suspicious ?? 0,
+              harmless: stats.harmless ?? 0,
+              categories: Object.values(categories).slice(0, 3), // top 3 category labels
+            }
+          },
+        }),
+
+        // ── 3. Domain age via RDAP (ICANN standard — no API key, no registration) ─
+        whois_lookup: tool({
+          description:
+            'Look up domain registration data via RDAP to detect freshly registered fake news outlets and domain squatting.',
+          parameters: z.object({
+            domain: z.string().describe('The domain to look up, e.g. "suspicious-news.net"'),
+          }),
+          execute: async ({ domain }) => {
+            const res = await fetch(`https://rdap.org/domain/${encodeURIComponent(domain)}`)
+
+            if (!res.ok) return { error: `RDAP error: ${res.status}` }
+
+            const data = await res.json()
+
+            const registrationEvent = (data.events ?? []).find(
+              (e: { eventAction: string; eventDate: string }) =>
+                e.eventAction === 'registration'
+            )
+            const createdAt: string | null = registrationEvent?.eventDate ?? null
+            const ageDays = createdAt
+              ? Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)
+              : null
+
+            const registrar = data.entities?.[0]?.vcardArray?.[1]
+              ?.find((v: unknown[]) => v[0] === 'fn')?.[3] ?? null
+
+            return {
+              domain,
+              registrar,
+              createdAt,
+              ageDays,
+              freshDomain: ageDays !== null ? ageDays < 30 : null,
+            }
+          },
+        }),
+      },
+    })
+
+    // --- Dev logging ---
+    if (process.env.NODE_ENV === 'development') {
+      console.log('\n=== AGENT STEPS ===')
+      steps.forEach((step, i) => {
+        console.log(`\nStep ${i + 1}: ${step.stepType}`)
+        if (step.toolCalls?.length) {
+          step.toolCalls.forEach((tc) => {
+            console.log(`  → Tool: ${tc.toolName}`)
+            console.log(`  → Input:`, tc.args)
+          })
+        }
+        if (step.toolResults?.length) {
+          step.toolResults.forEach((tr) => {
+            console.log(`  ← Result preview:`, JSON.stringify(tr.result).slice(0, 200))
+          })
+        }
+      })
+      console.log('\n=== FINAL TEXT ===\n', text)
+      steps.forEach((s, i) => {
+        console.log(`\nStep ${i+1} text:`, JSON.stringify(s.text))
+        console.log(`Step ${i+1} toolResults:`, JSON.stringify(s.toolResults?.map((r: {result: unknown}) => JSON.stringify(r.result).slice(0, 100))))
+      })
+    }
+
+    // --- Parse verdict ---
+    // Groq sometimes puts the final response in the last step text rather than
+    // the top-level text. Search both sources for a valid JSON verdict.
+    const candidateTexts = [
+      text,
+      ...steps.map((s) => s.text ?? '').filter(Boolean),
+    ]
+
+    let verdict
+    let parsed = false
+    for (const candidate of candidateTexts) {
+      try {
+        const jsonMatch = candidate.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          verdict = JSON.parse(jsonMatch[0])
+          parsed = true
+          break
+        }
+      } catch {
+        // try next candidate
+      }
+    }
+
+    if (!parsed) {
+      verdict = {
+        verdict: 'UNVERIFIABLE',
+        confidence: 0,
+        summary: candidateTexts.join(' ').slice(0, 500) || 'Agent returned no text',
+        sources: [],
+        flags: ['Agent response was not valid JSON'],
+      }
+    }
+
+    return NextResponse.json({
+      verdict,
+      steps: steps.length,
+      // Surface whether infra tools were actually used — useful for the frontend
+      infraChecked: domain !== null,
+      domain: domain ?? undefined,
+    })
+
+  } catch (err) {
+    console.error('Agent error:', err)
+    return NextResponse.json({ error: 'Agent failed' }, { status: 500 })
+  }
+}
