@@ -5,7 +5,6 @@ import {
   Shield,
   Globe,
   Search,
-  Zap,
   ExternalLink,
   AlertTriangle,
   ChevronRight,
@@ -87,20 +86,7 @@ const CAPABILITY_PILLS = [
   { icon: Globe, label: "Web OSINT" },
   { icon: Shield, label: "Domain Reputation" },
   { icon: Search, label: "WHOIS Lookup" },
-  { icon: Zap, label: "Smart Cache" },
 ]
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function truncateUrl(url: string, max = 48): string {
-  try {
-    const u = new URL(url)
-    const short = u.hostname + u.pathname
-    return short.length > max ? short.slice(0, max) + "…" : short
-  } catch {
-    return url.length > max ? url.slice(0, max) + "…" : url
-  }
-}
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
@@ -134,7 +120,7 @@ function Logo({ compact = false }: { compact?: boolean }) {
       <div
         className={cn(
           "font-black tracking-tighter leading-none",
-          compact ? "text-3xl" : "text-6xl md:text-7xl"
+          compact ? "text-2xl sm:text-3xl" : "text-4xl sm:text-6xl md:text-7xl"
         )}
         style={{ fontWeight: 900 }}
       >
@@ -142,7 +128,7 @@ function Logo({ compact = false }: { compact?: boolean }) {
         <span style={{ color: "#0EA5E9" }}>CHECKER</span>
       </div>
       {!compact && (
-        <p className="text-sm font-light tracking-[0.3em] text-slate-400 uppercase">
+        <p className="text-xs sm:text-sm font-light tracking-[0.2em] sm:tracking-[0.3em] text-slate-400 uppercase text-center">
           Autonomous OSINT Verification Agent
         </p>
       )}
@@ -158,11 +144,9 @@ function CapabilityPill({
   label: string
 }) {
   return (
-    <div
-      className="capability-pill glass-card flex items-center gap-2 rounded-full px-4 py-2 cursor-default"
-    >
-      <Icon size={14} className="text-sky-500" />
-      <span className="text-xs font-medium text-slate-600">{label}</span>
+    <div className="capability-pill glass-card flex flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-full px-3 sm:px-4 py-2.5 cursor-default min-w-0">
+      <Icon size={13} className="text-sky-500 shrink-0" />
+      <span className="text-xs font-medium text-slate-600 truncate">{label}</span>
     </div>
   )
 }
@@ -190,8 +174,8 @@ function IdleState({
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-6 py-16">
-      <div className="w-full max-w-2xl flex flex-col items-center gap-10">
+    <div className="flex min-h-screen flex-col items-center justify-center px-4 sm:px-6 py-12 sm:py-16">
+      <div className="w-full max-w-2xl flex flex-col items-center gap-8 sm:gap-10">
         {/* Logo */}
         <Logo />
 
@@ -211,10 +195,10 @@ function IdleState({
               onKeyDown={handleKeyDown}
               placeholder="Paste a news headline, claim, or URL to verify…&#10;&#10;e.g. &quot;NASA confirms water on Mars&quot; or https://suspicious-news.net/story"
               rows={5}
-              className="w-full resize-none bg-transparent px-6 pt-5 pb-4 text-base font-light text-slate-800 placeholder:text-slate-400 focus:outline-none"
+              className="w-full resize-none bg-transparent px-4 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 text-sm sm:text-base font-light text-slate-800 placeholder:text-slate-400 focus:outline-none"
               style={{ fontFamily: "inherit" }}
             />
-            <div className="flex items-center justify-between border-t border-white/60 bg-white/30 px-6 py-3">
+            <div className="flex items-center justify-between border-t border-white/60 bg-white/30 px-4 sm:px-6 py-3">
               <span className="text-xs text-slate-400 font-light">
                 {value.length > 0 ? `${value.length} characters` : "⌘ + Enter to submit"}
               </span>
@@ -222,7 +206,7 @@ function IdleState({
                 type="submit"
                 disabled={!value.trim()}
                 className={cn(
-                  "shimmer-btn flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all duration-200",
+                  "shimmer-btn flex items-center gap-2 rounded-xl px-4 sm:px-5 py-2 sm:py-2.5 text-sm font-semibold text-white transition-all duration-200",
                   "disabled:opacity-40 disabled:cursor-not-allowed disabled:animate-none disabled:bg-slate-400"
                 )}
                 style={!value.trim() ? { background: "#94a3b8", animation: "none" } : {}}
@@ -234,15 +218,15 @@ function IdleState({
           </div>
         </form>
 
-        {/* Capability pills */}
-        <div className="flex flex-wrap items-center justify-center gap-3">
+        {/* Capability pills  */}
+        <div className="flex w-full items-stretch gap-2 sm:gap-3">
           {CAPABILITY_PILLS.map((pill) => (
             <CapabilityPill key={pill.label} icon={pill.icon} label={pill.label} />
           ))}
         </div>
 
-        <p className="text-xs text-slate-400 font-light text-center max-w-md">
-          Powered by Gemini 1.5 Flash · Tavily Search · VirusTotal · RDAP
+        <p className="text-xs text-slate-400 font-light text-center max-w-md px-2">
+          Powered by Llama-3.3-70b · Tavily Search · VirusTotal · RDAP
         </p>
       </div>
     </div>
@@ -272,21 +256,21 @@ function LoadingState({ input }: { input: string }) {
   const formatStepNum = (i: number) => String(i + 1).padStart(2, "0")
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-6 py-16">
-      <div className="w-full max-w-2xl flex flex-col items-center gap-10">
+    <div className="flex min-h-screen flex-col items-center justify-center px-4 sm:px-6 py-12 sm:py-16">
+      <div className="w-full max-w-2xl flex flex-col items-center gap-6 sm:gap-10">
         <Logo compact />
 
         {/* Input preview */}
-        <div className="glass-card w-full rounded-2xl px-5 py-4">
+        <div className="glass-card w-full rounded-2xl px-4 sm:px-5 py-4">
           <p className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-2">
             Analyzing
           </p>
-          <p className="text-sm font-light text-slate-700 line-clamp-2 font-mono">
+          <p className="text-xs sm:text-sm font-light text-slate-700 line-clamp-2 font-mono break-all">
             {input}
           </p>
         </div>
 
-        {/* Terminal */}
+        {/* Terminal — expands as steps appear */}
         <div
           className="w-full rounded-2xl overflow-hidden"
           style={{
@@ -295,30 +279,30 @@ function LoadingState({ input }: { input: string }) {
           }}
         >
           {/* Terminal titlebar */}
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10">
-            <span className="h-3 w-3 rounded-full bg-red-500/70" />
-            <span className="h-3 w-3 rounded-full bg-yellow-500/70" />
-            <span className="h-3 w-3 rounded-full bg-green-500/70" />
-            <span className="ml-2 text-xs font-mono text-slate-500">
+          <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-white/10">
+            <span className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-red-500/70" />
+            <span className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-yellow-500/70" />
+            <span className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-green-500/70" />
+            <span className="ml-1.5 sm:ml-2 text-xs font-mono text-slate-500 truncate">
               osint-agent · fact-o-checker
             </span>
           </div>
 
-          {/* Terminal body */}
-          <div className="px-6 py-5 font-mono text-sm min-h-[240px] flex flex-col gap-2">
+          {/* Terminal body — grows with content, no fixed min-height on mobile */}
+          <div className="px-3 sm:px-6 py-4 sm:py-5 font-mono text-xs sm:text-sm min-h-[180px] sm:min-h-[240px] flex flex-col gap-1.5 sm:gap-2">
             {visibleSteps.map((i) => {
               const isLast = i === Math.max(...visibleSteps)
               return (
                 <div
                   key={i}
-                  className={cn("step-fade-in flex gap-3", isLast ? "cursor-blink" : "")}
+                  className={cn("step-fade-in flex gap-2 sm:gap-3", isLast ? "cursor-blink" : "")}
                 >
-                  <span className="text-slate-600 shrink-0">
-                    [ {formatStepNum(i)} ]
+                  <span className="text-slate-600 shrink-0 text-xs sm:text-sm">
+                    [{formatStepNum(i)}]
                   </span>
                   <span
                     className={cn(
-                      "transition-colors",
+                      "transition-colors break-words min-w-0",
                       isLast ? "text-sky-400" : "text-slate-400"
                     )}
                   >
@@ -335,7 +319,7 @@ function LoadingState({ input }: { input: string }) {
             className="h-1.5 w-1.5 rounded-full bg-sky-500 animate-pulse"
             style={{ animationDuration: "1s" }}
           />
-          <p className="text-xs text-slate-400 font-light">
+          <p className="text-xs text-slate-400 font-light text-center">
             Agent is reasoning — this may take 15–30 seconds
           </p>
         </div>
@@ -365,48 +349,41 @@ function ResultState({
   }, [v.confidence])
 
   return (
-    <div className="flex min-h-screen flex-col items-center px-6 py-16">
-      <div className="w-full max-w-2xl flex flex-col items-center gap-8">
+    <div className="flex min-h-screen flex-col items-center px-4 sm:px-6 py-12 sm:py-16">
+      <div className="w-full max-w-2xl flex flex-col items-center gap-6 sm:gap-8">
         {/* Logo + reset */}
-        <div className="flex w-full items-center justify-between">
+        <div className="flex w-full items-center justify-between gap-3">
           <Logo compact />
           <button
             onClick={onReset}
-            className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/60 px-4 py-2 text-sm font-medium text-slate-600 transition-all hover:bg-white/90 hover:shadow-sm"
+            className="flex items-center gap-1.5 sm:gap-2 rounded-xl border border-slate-200 bg-white/60 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-slate-600 transition-all hover:bg-white/90 hover:shadow-sm shrink-0"
           >
-            <RotateCcw size={14} />
+            <RotateCcw size={13} />
             New check
           </button>
         </div>
 
         {/* Input preview */}
-        <div className="glass-card w-full rounded-2xl px-5 py-4">
+        <div className="glass-card w-full rounded-2xl px-4 sm:px-5 py-4">
           <p className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-1.5">
             Verified
           </p>
-          <p className="text-sm font-light text-slate-700 line-clamp-2 font-mono">
+          <p className="text-xs sm:text-sm font-light text-slate-700 line-clamp-2 font-mono break-all">
             {input}
           </p>
         </div>
 
         {/* Verdict card */}
-        <div
-          className={cn(
-            "card-in glass-card w-full rounded-2xl overflow-hidden"
-          )}
-        >
+        <div className={cn("card-in glass-card w-full rounded-2xl overflow-hidden")}>
           {/* Colored top border */}
-          <div
-            className="h-1 w-full"
-            style={{ background: cfg.color }}
-          />
+          <div className="h-1 w-full" style={{ background: cfg.color }} />
 
-          <div className="p-7 flex flex-col gap-6">
+          <div className="p-5 sm:p-7 flex flex-col gap-5 sm:gap-6">
             {/* Verdict badge + confidence */}
-            <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
               <span
                 className={cn(
-                  "inline-flex items-center rounded-full px-5 py-2 text-lg font-bold tracking-wider",
+                  "inline-flex items-center rounded-full px-4 sm:px-5 py-1.5 sm:py-2 text-base sm:text-lg font-bold tracking-wider",
                   cfg.bgLight,
                   cfg.textColor
                 )}
@@ -414,26 +391,26 @@ function ResultState({
                 {cfg.label}
               </span>
               <div className="flex items-center gap-2">
-                <span className="text-3xl font-black text-slate-800">
+                <span className="text-2xl sm:text-3xl font-black text-slate-800">
                   {v.confidence}
-                  <span className="text-lg font-semibold text-slate-400">%</span>
+                  <span className="text-base sm:text-lg font-semibold text-slate-400">%</span>
                 </span>
                 <span className="text-sm text-slate-400 font-light">confidence</span>
               </div>
 
-              {/* Infra badge */}
+              {/* Infra badge — wraps on mobile */}
               {infraChecked && domain && (
                 <div
-                  className="ml-auto flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold"
+                  className="flex items-center gap-1.5 sm:gap-2 rounded-full px-3 py-1.5 text-xs font-semibold"
                   style={{
                     background: "rgba(16, 185, 129, 0.1)",
                     color: "#10B981",
                     border: "1px solid rgba(16, 185, 129, 0.25)",
                   }}
                 >
-                  <Shield size={12} />
-                  Infrastructure checked: {" "}
-                  <span className="font-mono">{domain}</span>
+                  <Shield size={11} />
+                  <span>Infra checked: </span>
+                  <span className="font-mono truncate max-w-[120px] sm:max-w-none">{domain}</span>
                 </div>
               )}
             </div>
@@ -452,7 +429,7 @@ function ResultState({
             </div>
 
             {/* Summary */}
-            <p className="text-base font-light leading-relaxed text-slate-700" style={{ fontSize: "1.025rem" }}>
+            <p className="text-sm sm:text-base font-light leading-relaxed text-slate-700">
               {v.summary}
             </p>
 
@@ -481,27 +458,27 @@ function ResultState({
               </div>
             )}
 
-            {/* Sources */}
+            {/* Sources — always single-column list, full URL visible */}
             {v.sources && v.sources.length > 0 && (
               <div className="flex flex-col gap-2">
                 <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
                   Sources
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-col gap-1.5">
                   {v.sources.map((src, i) => (
                     <a
                       key={i}
                       href={src}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-sky-700 transition-all hover:shadow-sm"
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-sky-700 transition-all hover:shadow-sm w-full overflow-hidden"
                       style={{
                         background: "rgba(14, 165, 233, 0.08)",
                         border: "1px solid rgba(14, 165, 233, 0.25)",
                       }}
                     >
                       <ExternalLink size={11} className="shrink-0" />
-                      {truncateUrl(src)}
+                      <span className="truncate">{src}</span>
                     </a>
                   ))}
                 </div>
@@ -574,9 +551,9 @@ export default function Page() {
           <>
             <IdleState onSubmit={handleSubmit} />
             {error && (
-              <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+              <div className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] sm:w-auto max-w-sm sm:max-w-none">
                 <div
-                  className="glass-card flex items-center gap-3 rounded-xl px-5 py-3 text-sm text-red-700"
+                  className="glass-card flex items-center gap-3 rounded-xl px-4 sm:px-5 py-3 text-sm text-red-700"
                   style={{ border: "1px solid rgba(239,68,68,0.3)" }}
                 >
                   <AlertTriangle size={16} className="text-red-500 shrink-0" />
