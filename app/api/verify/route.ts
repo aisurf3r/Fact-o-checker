@@ -1,4 +1,4 @@
-import { createGroq } from '@ai-sdk/groq'
+import { groq } from '@ai-sdk/groq'
 import { generateText, tool } from 'ai'
 import { z } from 'zod'
 import { NextRequest, NextResponse } from 'next/server'
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       : `Verify the following: ${input}`
 
     const { text, steps } = await generateText({
-      model: createGroq({ apiKey: process.env.GROQ_API_KEY })('llama-3.3-70b-versatile'),
+      model: groq('llama-3.3-70b-versatile'),
       system: SYSTEM_PROMPT,
       prompt,
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
