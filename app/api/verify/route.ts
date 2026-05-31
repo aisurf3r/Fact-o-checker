@@ -37,7 +37,7 @@ Rules:
 - If no sources found at all, return UNVERIFIABLE
 - Always use the search tool before making a verdict — never guess
 - Include ALL relevant sources found in the sources array — minimum 3 when available, up to 8. Never truncate sources.
-- Always respond in the same language as the input claim or URL content
+- CRITICAL: You MUST respond in the exact same language as the input. If the input is in Spanish, the entire summary must be in Spanish. If in English, in English and so on. Never switch languages.
 - Return ONLY the JSON object, no markdown, no preamble`
 
 export async function POST(req: NextRequest) {
