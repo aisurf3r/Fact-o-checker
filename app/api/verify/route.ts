@@ -3,25 +3,15 @@ import { generateText, tool } from 'ai'
 import { z } from 'zod'
 import { NextRequest, NextResponse } from 'next/server'
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Extracts the hostname from a URL string. Returns null if input is not a URL. */
 function extractDomain(input: string): string | null {
   try {
     const url = new URL(input.trim())
-    // Only accept http/https — avoids false positives on "javascript:", etc.
     if (!['http:', 'https:'].includes(url.protocol)) return null
     return url.hostname.replace(/^www\./, '')
   } catch {
     return null
   }
 }
-
-// ---------------------------------------------------------------------------
-// System prompt
-// ---------------------------------------------------------------------------
 
 const SYSTEM_PROMPT = `You are a Senior OSINT Officer specialized in disinformation detection.
 
@@ -50,10 +40,6 @@ Rules:
 - Always respond in the same language as the input claim or URL content
 - Return ONLY the JSON object, no markdown, no preamble`
 
-// ---------------------------------------------------------------------------
-// Route handler
-// ---------------------------------------------------------------------------
-
 export async function POST(req: NextRequest) {
   try {
     const { input } = await req.json()
@@ -62,7 +48,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing input' }, { status: 400 })
     }
 
-    // --- Domain extraction (Option B: deterministic, pre-agent) ---
     const domain = extractDomain(input)
     const prompt = domain
       ? `Verify the following: ${input}\n\nExtracted domain for infrastructure checks: ${domain}`
@@ -72,15 +57,11 @@ export async function POST(req: NextRequest) {
       model: groq('llama-3.1-8b-instant'),
       system: SYSTEM_PROMPT,
       prompt,
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore — maxSteps supported at runtime (ai v4+)
+      // @ts-ignore
       maxSteps: 7,
       tools: {
-
-        // ── 1. Web search ────────────────────────────────────────────────────
         tavily_search: tool({
-          description:
-            'Search the web for real-time information to verify claims or investigate URLs.',
+          description: 'Search the web for real-time information to verify claims or investigate URLs.',
           parameters: z.object({
             query: z.string().describe('The search query to investigate'),
           }),
@@ -96,9 +77,7 @@ export async function POST(req: NextRequest) {
                 include_answer: true,
               }),
             })
-
             if (!res.ok) return { error: `Tavily error: ${res.status}`, results: [] }
-
             const data = await res.json()
             return {
               answer: data.answer ?? null,
@@ -114,68 +93,54 @@ export async function POST(req: NextRequest) {
           },
         }),
 
-        // ── 2. VirusTotal domain reputation ──────────────────────────────────
         virustotal_check: tool({
-          description:
-            'Check a domain\'s reputation and malware history via VirusTotal. Use this whenever a domain is available.',
+          description: 'Check a domain\'s reputation and malware history via VirusTotal.',
           parameters: z.object({
             domain: z.string().describe('The domain to check, e.g. "suspicious-news.net"'),
           }),
           execute: async ({ domain }) => {
             const res = await fetch(
               `https://www.virustotal.com/api/v3/domains/${encodeURIComponent(domain)}`,
-              {
-                headers: { 'x-apikey': process.env.VIRUSTOTAL_API_KEY ?? '' },
-              }
+              { headers: { 'x-apikey': process.env.VIRUSTOTAL_API_KEY ?? '' } }
             )
-
             if (!res.ok) return { error: `VirusTotal error: ${res.status}` }
-
             const data = await res.json()
             const stats = data?.data?.attributes?.last_analysis_stats ?? {}
-            const reputation = data?.data?.attributes?.reputation ?? null
             const categories = data?.data?.attributes?.categories ?? {}
-
             return {
               domain,
-              reputation,           // negative = bad, 0 = unknown, positive = trusted
+              reputation: data?.data?.attributes?.reputation ?? null,
               malicious: stats.malicious ?? 0,
               suspicious: stats.suspicious ?? 0,
               harmless: stats.harmless ?? 0,
-              categories: Object.values(categories).slice(0, 3), // top 3 category labels
+              categories: Object.values(categories).slice(0, 3),
             }
           },
         }),
 
-        // ── 3. Domain age via RDAP (ICANN standard — no API key, no registration) ─
         whois_lookup: tool({
-          description:
-            'Look up domain registration data via RDAP to detect freshly registered fake news outlets and domain squatting.',
+          description: 'Look up domain registration data via RDAP to detect freshly registered fake news outlets.',
           parameters: z.object({
             domain: z.string().describe('The domain to look up, e.g. "suspicious-news.net"'),
           }),
           execute: async ({ domain }) => {
             const res = await fetch(`https://rdap.org/domain/${encodeURIComponent(domain)}`)
-
             if (!res.ok) return { error: `RDAP error: ${res.status}` }
-
             const data = await res.json()
-
             const registrationEvent = (data.events ?? []).find(
-              (e: { eventAction: string; eventDate: string }) =>
-                e.eventAction === 'registration'
+              (e: { eventAction: string; eventDate: string }) => e.eventAction === 'registration'
             )
             const createdAt: string | null = registrationEvent?.eventDate ?? null
             const ageDays = createdAt
               ? Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)
               : null
-
-            const registrar = data.entities?.[0]?.vcardArray?.[1]
-              ?.find((v: unknown[]) => v[0] === 'fn')?.[3] ?? null
-
+            const vcardArr = data.entities?.[0]?.vcardArray?.[1]
+            const fnEntry = Array.isArray(vcardArr)
+              ? vcardArr.find((v: unknown[]) => Array.isArray(v) && v[0] === 'fn')
+              : null
             return {
               domain,
-              registrar,
+              registrar: fnEntry?.[3] ?? null,
               createdAt,
               ageDays,
               freshDomain: ageDays !== null ? ageDays < 30 : null,
@@ -185,36 +150,10 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    // --- Dev logging ---
-    if (process.env.NODE_ENV === 'development') {
-      console.log('\n=== AGENT STEPS ===')
-      steps.forEach((step, i) => {
-        console.log(`\nStep ${i + 1}: ${step.stepType}`)
-        if (step.toolCalls?.length) {
-          step.toolCalls.forEach((tc) => {
-            console.log(`  → Tool: ${tc.toolName}`)
-            console.log(`  → Input:`, tc.args)
-          })
-        }
-        if (step.toolResults?.length) {
-          step.toolResults.forEach((tr) => {
-            console.log(`  ← Result preview:`, JSON.stringify(tr.result).slice(0, 200))
-          })
-        }
-      })
-      console.log('\n=== FINAL TEXT ===\n', text)
-    }
-
-    // --- Parse verdict ---
-    // Groq sometimes puts the final response in the last step text rather than
-    // the top-level text. Search both sources for a valid JSON verdict.
-    const candidateTexts = [
-      text,
-      ...steps.map((s) => s.text ?? '').filter(Boolean),
-    ]
-
+    const candidateTexts = [text, ...steps.map((s) => s.text ?? '').filter(Boolean)]
     let verdict
     let parsed = false
+
     for (const candidate of candidateTexts) {
       try {
         const jsonMatch = candidate.match(/\{[\s\S]*\}/)
@@ -241,7 +180,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       verdict,
       steps: steps.length,
-      // Surface whether infra tools were actually used — useful for the frontend
       infraChecked: domain !== null,
       domain: domain ?? undefined,
     })
