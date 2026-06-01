@@ -203,3 +203,26 @@
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);
 }
+
+/* ──────────────────────────────────────────────
+   Flip-clock O animation
+   Single keyframe: 0→-90° (fold out), 90°→0° (fold in)
+   Color swaps at 300ms midpoint via JS
+────────────────────────────────────────────── */
+.flip-o-letter {
+  display: inline-block;
+  transform-style: preserve-3d;
+  perspective: 400px;
+  will-change: transform;
+}
+
+@keyframes flip-cycle {
+  0%    { transform: rotateX(0deg); }
+  49.9% { transform: rotateX(-90deg); }
+  50%   { transform: rotateX(90deg); }
+  100%  { transform: rotateX(0deg); }
+}
+
+.flip-o-animate {
+  animation: flip-cycle 0.6s cubic-bezier(0.55, 0, 0.45, 1) forwards;
+}
