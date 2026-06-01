@@ -115,7 +115,7 @@ const FLIP_COLORS = [
   "#F59E0B", // amber
   "#EF4444", // red
   "#3B82F6", // blue
-  "#8B5CF6", // violet 
+  "#8B5CF6", // violet — only used when user hasn't banned it; keeping per brand needs
   "#06B6D4", // cyan
   "#F97316", // orange
 ]
@@ -289,6 +289,7 @@ function IdleState({
 
 function LoadingState({ input }: { input: string }) {
   const [visibleSteps, setVisibleSteps] = useState<number[]>([])
+  const [isComplete, setIsComplete] = useState(false)
 
   useEffect(() => {
     const intervals = [0, 900, 1800, 2700, 3500, 4400, 5300, 6100, 6900]
@@ -302,13 +303,21 @@ function LoadingState({ input }: { input: string }) {
       }, delay)
     )
 
-    return () => timers.forEach(clearTimeout)
+    // After last step + 1.5s buffer, mark as complete to trigger fade
+    const completeTimer = setTimeout(() => {
+      setIsComplete(true)
+    }, 6900 + 1500)
+
+    return () => {
+      timers.forEach(clearTimeout)
+      clearTimeout(completeTimer)
+    }
   }, [])
 
   const formatStepNum = (i: number) => String(i + 1).padStart(2, "0")
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4 sm:px-6 py-12 sm:py-16">
+    <div className={cn("flex min-h-screen flex-col items-center justify-center px-4 sm:px-6 py-12 sm:py-16 transition-opacity duration-700", isComplete ? "opacity-0" : "opacity-100")}>
       <div className="w-full max-w-2xl flex flex-col items-center gap-6 sm:gap-10">
         <Logo compact />
 
@@ -324,7 +333,7 @@ function LoadingState({ input }: { input: string }) {
 
         {/* Terminal — expands as steps appear */}
         <div
-          className="w-full rounded-2xl overflow-hidden"
+          className="w-full rounded-2xl overflow-hidden terminal-container"
           style={{
             background: "rgba(15, 23, 42, 0.96)",
             boxShadow: "0 20px 60px rgba(0, 0, 0, 0.25)",
@@ -341,7 +350,7 @@ function LoadingState({ input }: { input: string }) {
           </div>
 
           {/* Terminal body — grows with content, no fixed min-height on mobile */}
-          <div className="px-3 sm:px-6 py-4 sm:py-5 font-mono text-xs sm:text-sm min-h-[180px] sm:min-h-[240px] flex flex-col gap-1.5 sm:gap-2">
+          <div className="terminal-body px-3 sm:px-6 py-4 sm:py-5 font-mono text-xs sm:text-sm min-h-[180px] sm:min-h-[240px] flex flex-col gap-1.5 sm:gap-2 overflow-y-auto max-h-[50vh] sm:max-h-[60vh]">
             {visibleSteps.map((i) => {
               const isLast = i === Math.max(...visibleSteps)
               return (
@@ -401,7 +410,7 @@ function ResultState({
   }, [v.confidence])
 
   return (
-    <div className="flex min-h-screen flex-col items-center px-4 sm:px-6 py-12 sm:py-16">
+    <div className="flex min-h-screen flex-col items-center px-4 sm:px-6 py-12 sm:py-16 result-fade-in">
       <div className="w-full max-w-2xl flex flex-col items-center gap-6 sm:gap-8">
         {/* Logo + reset */}
         <div className="flex w-full items-center justify-between gap-3">
@@ -579,8 +588,10 @@ export default function Page() {
         return
       }
 
-      setResult(data)
-      setAppState("result")
+      setTimeout(() => {
+        setResult(data)
+        setAppState("result")
+      }, 1000)
     } catch {
       setError("Network error. Please check your connection and try again.")
       setAppState("idle")
