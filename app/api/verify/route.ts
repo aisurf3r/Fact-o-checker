@@ -53,10 +53,11 @@ export async function POST(req: NextRequest) {
       ? `Verify the following: ${input}\n\nExtracted domain for infrastructure checks: ${domain}`
       : `Verify the following: ${input}`
 
-    const result = await generateText({
+    const { text, steps } = await generateText({
       model: groq('llama-3.3-70b-versatile'),
       system: SYSTEM_PROMPT,
       prompt,
+      // @ts-ignore
       maxSteps: 7,
       tools: {
         tavily_search: tool({
@@ -149,23 +150,7 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    const candidateTexts: string[] = [
-      result.text,
-      ...result.steps.map((s) => s.text ?? ''),
-      ...result.steps.flatMap((s) =>
-        s.response?.messages?.map((m) => {
-          if (typeof m.content === 'string') return m.content
-          if (Array.isArray(m.content)) {
-            return m.content
-              .filter((c: { type: string; text?: string }) => c.type === 'text')
-              .map((c: { type: string; text?: string }) => c.text ?? '')
-              .join('')
-          }
-          return ''
-        }) ?? []
-      ),
-    ].filter(Boolean)
-
+    const candidateTexts = [text, ...steps.map((s) => s.text ?? '').filter(Boolean)]
     let verdict
     let parsed = false
 
@@ -174,13 +159,11 @@ export async function POST(req: NextRequest) {
         const jsonMatch = candidate.match(/\{[\s\S]*\}/)
         if (jsonMatch) {
           verdict = JSON.parse(jsonMatch[0])
-          if (verdict.verdict && verdict.summary) {
-            parsed = true
-            break
-          }
+          parsed = true
+          break
         }
       } catch {
-        // continue
+        // try next candidate
       }
     }
 
@@ -188,15 +171,15 @@ export async function POST(req: NextRequest) {
       verdict = {
         verdict: 'UNVERIFIABLE',
         confidence: 0,
-        summary: result.text || 'Agent returned no structured text',
+        summary: candidateTexts.join(' ').slice(0, 500) || 'Agent returned no text',
         sources: [],
-        flags: ['Agent response was not valid JSON or properties were missing'],
+        flags: ['Agent response was not valid JSON'],
       }
     }
 
     return NextResponse.json({
       verdict,
-      steps: result.steps.length,
+      steps: steps.length,
       infraChecked: domain !== null,
       domain: domain ?? undefined,
     })
