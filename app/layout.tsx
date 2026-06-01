@@ -33,21 +33,12 @@ export const metadata: Metadata = {
     title: "Fact·O·Checker — Autonomous OSINT Verification Agent",
     description:
       "Paste any news headline, claim, or URL and get an AI-powered fact-check verdict in seconds.",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Fact·O·Checker — Autonomous OSINT Verification Agent",
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Fact·O·Checker — Autonomous OSINT Verification Agent",
     description:
       "Paste any news headline, claim, or URL and get an AI-powered fact-check verdict in seconds.",
-    images: ["/og-image.png"],
     creator: "@aisurf3r",
   },
   robots: {
