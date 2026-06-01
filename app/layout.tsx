@@ -37,8 +37,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Fact·O·Checker — Autonomous OSINT Verification Agent",
-    description:
-      "Paste any news headline, claim, or URL and get an AI-powered fact-check verdict in seconds.",
+    description: "Paste any news headline, claim, or URL and get an AI-powered fact-check verdict in seconds.",
     creator: "@aisurf3r",
   },
   robots: {
