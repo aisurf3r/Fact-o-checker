@@ -287,32 +287,46 @@ function IdleState({
 
 // ─── Loading State ────────────────────────────────────────────────────────────
 
-function LoadingState({ input }: { input: string }) {
+function LoadingState({
+  input,
+  isReady,
+  onComplete,
+}: {
+  input: string
+  isReady: boolean
+  onComplete: () => void
+}) {
   const [visibleSteps, setVisibleSteps] = useState<number[]>([])
+  const [showFinal, setShowFinal] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
 
+  // Show steps progressively — keep cycling last one until agent responds
   useEffect(() => {
-    const intervals = [0, 900, 1800, 2700, 3500, 4400, 5300, 6100, 6900]
+    const STEP_INTERVAL = 900
+    const timers: ReturnType<typeof setTimeout>[] = []
 
-    const timers = intervals.map((delay, i) =>
-      setTimeout(() => {
-        setVisibleSteps((prev) => {
-          if (prev.includes(i)) return prev
-          return [...prev, i]
-        })
-      }, delay)
-    )
+    LOADING_STEPS.forEach((_, i) => {
+      timers.push(
+        setTimeout(() => {
+          setVisibleSteps((prev) => (prev.includes(i) ? prev : [...prev, i]))
+        }, i * STEP_INTERVAL)
+      )
+    })
 
-    // After last step + 1.5s buffer, mark as complete to trigger fade
-    const completeTimer = setTimeout(() => {
-      setIsComplete(true)
-    }, 6900 + 1500)
-
-    return () => {
-      timers.forEach(clearTimeout)
-      clearTimeout(completeTimer)
-    }
+    return () => timers.forEach(clearTimeout)
   }, [])
+
+  // When agent responds: append final step, fade, notify parent
+  useEffect(() => {
+    if (!isReady) return
+    setShowFinal(true)
+    const fadeTimer = setTimeout(() => setIsComplete(true), 600)
+    const doneTimer = setTimeout(() => onComplete(), 600 + 700)
+    return () => {
+      clearTimeout(fadeTimer)
+      clearTimeout(doneTimer)
+    }
+  }, [isReady, onComplete])
 
   const formatStepNum = (i: number) => String(i + 1).padStart(2, "0")
 
@@ -352,7 +366,7 @@ function LoadingState({ input }: { input: string }) {
           {/* Terminal body — grows with content, no fixed min-height on mobile */}
           <div className="terminal-body px-3 sm:px-6 py-4 sm:py-5 font-mono text-xs sm:text-sm min-h-[180px] sm:min-h-[240px] flex flex-col gap-1.5 sm:gap-2 overflow-y-auto max-h-[50vh] sm:max-h-[60vh]">
             {visibleSteps.map((i) => {
-              const isLast = i === Math.max(...visibleSteps)
+              const isLast = i === Math.max(...visibleSteps) && !showFinal
               return (
                 <div
                   key={i}
@@ -372,6 +386,16 @@ function LoadingState({ input }: { input: string }) {
                 </div>
               )
             })}
+            {showFinal && (
+              <div className="step-fade-in flex gap-2 sm:gap-3">
+                <span className="text-slate-600 shrink-0 text-xs sm:text-sm">
+                  [{formatStepNum(LOADING_STEPS.length)}]
+                </span>
+                <span className="text-emerald-400 break-words min-w-0 font-semibold">
+                  ✓ Verdict ready — rendering result...
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -565,6 +589,7 @@ export default function Page() {
   const [appState, setAppState] = useState<AppState>("idle")
   const [input, setInput] = useState("")
   const [result, setResult] = useState<ApiResponse | null>(null)
+  const [pendingResult, setPendingResult] = useState<ApiResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = async (userInput: string) => {
@@ -588,19 +613,23 @@ export default function Page() {
         return
       }
 
-      setTimeout(() => {
-        setResult(data)
-        setAppState("result")
-      }, 1000)
+      setPendingResult(data)
     } catch {
       setError("Network error. Please check your connection and try again.")
       setAppState("idle")
     }
   }
 
+  const handleLoadingComplete = () => {
+    setResult(pendingResult)
+    setPendingResult(null)
+    setAppState("result")
+  }
+
   const handleReset = () => {
     setAppState("idle")
     setResult(null)
+    setPendingResult(null)
     setError(null)
     setInput("")
   }
@@ -627,7 +656,13 @@ export default function Page() {
           </>
         )}
 
-        {appState === "loading" && <LoadingState input={input} />}
+        {appState === "loading" && (
+          <LoadingState
+            input={input}
+            isReady={pendingResult !== null}
+            onComplete={handleLoadingComplete}
+          />
+        )}
 
         {appState === "result" && result && (
           <ResultState result={result} input={input} onReset={handleReset} />
