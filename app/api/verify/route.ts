@@ -53,12 +53,12 @@ export async function POST(req: NextRequest) {
       ? `Verify the following: ${input}\n\nExtracted domain for infrastructure checks: ${domain}`
       : `Verify the following: ${input}`
 
-    const { text, steps } = await generateText({
+    // Extraemos 'messages' además de 'text' y 'steps' para tener la auditoría total de Groq
+    const { text, steps, messages } = await generateText({
       model: groq('llama-3.3-70b-versatile'),
       system: SYSTEM_PROMPT,
       prompt,
-      // @ts-ignore
-      maxSteps: 7,
+      maxSteps: 7, 
       tools: {
         tavily_search: tool({
           description: 'Search the web for real-time information to verify claims or investigate URLs.',
@@ -150,7 +150,13 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    const candidateTexts = [text, ...steps.map((s) => s.text ?? '').filter(Boolean)]
+    // Mapeamos exhaustivamente todas las fuentes de texto potenciales, incluyendo el historial de mensajes de la respuesta de Groq
+    const candidateTexts = [
+      text, 
+      ...steps.map((s) => s.text ?? ''),
+      ...messages.map((m) => typeof m.content === 'string' ? m.content : JSON.stringify(m.content))
+    ].filter(Boolean)
+
     let verdict
     let parsed = false
 
@@ -159,11 +165,14 @@ export async function POST(req: NextRequest) {
         const jsonMatch = candidate.match(/\{[\s\S]*\}/)
         if (jsonMatch) {
           verdict = JSON.parse(jsonMatch[0])
-          parsed = true
-          break
+          // Validación defensiva rápida de estructura
+          if (verdict.verdict && verdict.summary) {
+            parsed = true
+            break
+          }
         }
       } catch {
-        // try next candidate
+        // Continuar buscando en el siguiente candidato
       }
     }
 
@@ -171,9 +180,9 @@ export async function POST(req: NextRequest) {
       verdict = {
         verdict: 'UNVERIFIABLE',
         confidence: 0,
-        summary: candidateTexts.join(' ').slice(0, 500) || 'Agent returned no text',
+        summary: text || 'Agent returned no structured text',
         sources: [],
-        flags: ['Agent response was not valid JSON'],
+        flags: ['Agent response was not valid JSON or properties were missing'],
       }
     }
 
