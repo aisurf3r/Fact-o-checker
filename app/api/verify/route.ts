@@ -3,14 +3,30 @@ import { generateText, tool } from 'ai'
 import { z } from 'zod'
 import { NextRequest, NextResponse } from 'next/server'
 
+const FETCH_TIMEOUT_MS = 8000
+
 function extractDomain(input: string): string | null {
+  const trimmed = input.trim()
   try {
-    const url = new URL(input.trim())
+    const url = new URL(trimmed)
     if (!['http:', 'https:'].includes(url.protocol)) return null
     return url.hostname.replace(/^www\./, '')
   } catch {
+    // Try adding protocol for bare domains like "noticias-fake.net"
+    try {
+      const url = new URL(`https://${trimmed}`)
+      if (url.hostname.includes('.') && !trimmed.includes(' ')) {
+        return url.hostname.replace(/^www\./, '')
+      }
+    } catch {}
     return null
   }
+}
+
+function fetchWithTimeout(url: string, options: RequestInit = {}): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer))
 }
 
 const SYSTEM_PROMPT = `You are a Senior OSINT Officer specialized in disinformation detection.
@@ -48,6 +64,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing input' }, { status: 400 })
     }
 
+    const vtKey = process.env.VIRUSTOTAL_API_KEY
+    if (!vtKey) console.warn('VIRUSTOTAL_API_KEY is not set — domain reputation checks will be skipped')
+
     const domain = extractDomain(input)
     const prompt = domain
       ? `Verify the following: ${input}\n\nExtracted domain for infrastructure checks: ${domain}`
@@ -66,29 +85,34 @@ export async function POST(req: NextRequest) {
             query: z.string().describe('The search query to investigate'),
           }),
           execute: async ({ query }) => {
-            const res = await fetch('https://api.tavily.com/search', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                api_key: process.env.TAVILY_API_KEY,
-                query,
-                search_depth: 'basic',
-                max_results: 5,
-                include_answer: true,
-              }),
-            })
-            if (!res.ok) return { error: `Tavily error: ${res.status}`, results: [] }
-            const data = await res.json()
-            return {
-              answer: data.answer ?? null,
-              results: (data.results ?? []).map((r: {
-                title: string; url: string; content: string; score: number
-              }) => ({
-                title: r.title,
-                url: r.url,
-                snippet: r.content?.slice(0, 300),
-                score: r.score,
-              })),
+            try {
+              const res = await fetchWithTimeout('https://api.tavily.com/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  api_key: process.env.TAVILY_API_KEY,
+                  query,
+                  search_depth: 'basic',
+                  max_results: 5,
+                  include_answer: true,
+                }),
+              })
+              if (!res.ok) return { error: `Tavily error: ${res.status}`, results: [] }
+              const data = await res.json()
+              return {
+                answer: data.answer ?? null,
+                results: (data.results ?? []).map((r: {
+                  title: string; url: string; content: string; score: number
+                }) => ({
+                  title: r.title,
+                  url: r.url,
+                  snippet: r.content?.slice(0, 300),
+                  score: r.score,
+                })),
+              }
+            } catch (err: unknown) {
+              const isTimeout = err instanceof Error && err.name === 'AbortError'
+              return { error: isTimeout ? 'Tavily timeout' : `Tavily error: ${String(err)}`, results: [] }
             }
           },
         }),
@@ -99,21 +123,27 @@ export async function POST(req: NextRequest) {
             domain: z.string().describe('The domain to check, e.g. "suspicious-news.net"'),
           }),
           execute: async ({ domain }) => {
-            const res = await fetch(
-              `https://www.virustotal.com/api/v3/domains/${encodeURIComponent(domain)}`,
-              { headers: { 'x-apikey': process.env.VIRUSTOTAL_API_KEY ?? '' } }
-            )
-            if (!res.ok) return { error: `VirusTotal error: ${res.status}` }
-            const data = await res.json()
-            const stats = data?.data?.attributes?.last_analysis_stats ?? {}
-            const categories = data?.data?.attributes?.categories ?? {}
-            return {
-              domain,
-              reputation: data?.data?.attributes?.reputation ?? null,
-              malicious: stats.malicious ?? 0,
-              suspicious: stats.suspicious ?? 0,
-              harmless: stats.harmless ?? 0,
-              categories: Object.values(categories).slice(0, 3),
+            if (!vtKey) return { error: 'VirusTotal API key not configured' }
+            try {
+              const res = await fetchWithTimeout(
+                `https://www.virustotal.com/api/v3/domains/${encodeURIComponent(domain)}`,
+                { headers: { 'x-apikey': vtKey } }
+              )
+              if (!res.ok) return { error: `VirusTotal error: ${res.status}` }
+              const data = await res.json()
+              const stats = data?.data?.attributes?.last_analysis_stats ?? {}
+              const categories = data?.data?.attributes?.categories ?? {}
+              return {
+                domain,
+                reputation: data?.data?.attributes?.reputation ?? null,
+                malicious: stats.malicious ?? 0,
+                suspicious: stats.suspicious ?? 0,
+                harmless: stats.harmless ?? 0,
+                categories: Object.values(categories).slice(0, 3),
+              }
+            } catch (err: unknown) {
+              const isTimeout = err instanceof Error && err.name === 'AbortError'
+              return { error: isTimeout ? 'VirusTotal timeout' : `VirusTotal error: ${String(err)}` }
             }
           },
         }),
@@ -124,26 +154,31 @@ export async function POST(req: NextRequest) {
             domain: z.string().describe('The domain to look up, e.g. "suspicious-news.net"'),
           }),
           execute: async ({ domain }) => {
-            const res = await fetch(`https://rdap.org/domain/${encodeURIComponent(domain)}`)
-            if (!res.ok) return { error: `RDAP error: ${res.status}` }
-            const data = await res.json()
-            const registrationEvent = (data.events ?? []).find(
-              (e: { eventAction: string; eventDate: string }) => e.eventAction === 'registration'
-            )
-            const createdAt: string | null = registrationEvent?.eventDate ?? null
-            const ageDays = createdAt
-              ? Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)
-              : null
-            const vcardArr = data.entities?.[0]?.vcardArray?.[1]
-            const fnEntry = Array.isArray(vcardArr)
-              ? vcardArr.find((v: unknown[]) => Array.isArray(v) && v[0] === 'fn')
-              : null
-            return {
-              domain,
-              registrar: fnEntry?.[3] ?? null,
-              createdAt,
-              ageDays,
-              freshDomain: ageDays !== null ? ageDays < 30 : null,
+            try {
+              const res = await fetchWithTimeout(`https://rdap.org/domain/${encodeURIComponent(domain)}`)
+              if (!res.ok) return { error: `RDAP error: ${res.status}` }
+              const data = await res.json()
+              const registrationEvent = (data.events ?? []).find(
+                (e: { eventAction: string; eventDate: string }) => e.eventAction === 'registration'
+              )
+              const createdAt: string | null = registrationEvent?.eventDate ?? null
+              const ageDays = createdAt
+                ? Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)
+                : null
+              const vcardArr = data.entities?.[0]?.vcardArray?.[1]
+              const fnEntry = Array.isArray(vcardArr)
+                ? vcardArr.find((v: unknown[]) => Array.isArray(v) && v[0] === 'fn')
+                : null
+              return {
+                domain,
+                registrar: fnEntry?.[3] ?? null,
+                createdAt,
+                ageDays,
+                freshDomain: ageDays !== null ? ageDays < 30 : null,
+              }
+            } catch (err: unknown) {
+              const isTimeout = err instanceof Error && err.name === 'AbortError'
+              return { error: isTimeout ? 'RDAP timeout' : `RDAP error: ${String(err)}` }
             }
           },
         }),
