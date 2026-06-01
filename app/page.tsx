@@ -109,6 +109,48 @@ function AnimatedBlobs() {
   )
 }
 
+const FLIP_COLORS = [
+  "#0EA5E9", // sky
+  "#10B981", // emerald
+  "#F59E0B", // amber
+  "#EF4444", // red
+  "#3B82F6", // blue
+  "#8B5CF6", // violet — only used when user hasn't banned it; keeping per brand needs
+  "#06B6D4", // cyan
+  "#F97316", // orange
+]
+
+function FlipO({ compact = false }: { compact?: boolean }) {
+  const [colorIndex, setColorIndex] = useState(0)
+  const [flipping, setFlipping] = useState(false)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFlipping(true)
+      setTimeout(() => {
+        setColorIndex((prev) => (prev + 1) % FLIP_COLORS.length)
+      }, 300)
+    }, 4000)
+    return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    if (!flipping) return
+    const timer = setTimeout(() => setFlipping(false), 600)
+    return () => clearTimeout(timer)
+  }, [flipping])
+
+  return (
+    <span
+      className={cn("flip-o-letter inline-block", flipping ? "flip-o-animate" : "")}
+      style={{ color: FLIP_COLORS[colorIndex] }}
+      aria-label="O"
+    >
+      O
+    </span>
+  )
+}
+
 function Logo({ compact = false }: { compact?: boolean }) {
   return (
     <div
@@ -124,7 +166,9 @@ function Logo({ compact = false }: { compact?: boolean }) {
         )}
         style={{ fontWeight: 900 }}
       >
-        <span className="text-slate-900">FACT·O·</span>
+        <span className="text-slate-900">FACT·</span>
+        <FlipO compact={compact} />
+        <span className="text-slate-900">·</span>
         <span style={{ color: "#0EA5E9" }}>CHECKER</span>
       </div>
       {!compact && (
@@ -226,7 +270,15 @@ function IdleState({
         </div>
 
         <p className="text-xs text-slate-400 font-light text-center max-w-md px-2">
-          Powered by Llama-3.3-70b · Tavily Search · VirusTotal · RDAP
+          Powered by Llama-3.3-70b · Tavily Search · VirusTotal · RDAP ·{" "}
+          <a
+            href="https://github.com/aisurf3r/Fact-o-checker"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 decoration-slate-300 hover:decoration-slate-500 transition-colors"
+          >
+            GitHub
+          </a>
         </p>
       </div>
     </div>
