@@ -115,7 +115,7 @@ const FLIP_COLORS = [
   "#F59E0B", // amber
   "#EF4444", // red
   "#3B82F6", // blue
-  "#8B5CF6", // violet — only used when user hasn't banned it; keeping per brand needs
+  "#8B5CF6", // violet 
   "#06B6D4", // cyan
   "#F97316", // orange
 ]
