@@ -53,12 +53,11 @@ export async function POST(req: NextRequest) {
       ? `Verify the following: ${input}\n\nExtracted domain for infrastructure checks: ${domain}`
       : `Verify the following: ${input}`
 
-    // Extraemos 'messages' además de 'text' y 'steps' para tener la auditoría total de Groq
-    const { text, steps, messages } = await generateText({
+    const result = await generateText({
       model: groq('llama-3.3-70b-versatile'),
       system: SYSTEM_PROMPT,
       prompt,
-      maxSteps: 7, 
+      maxSteps: 7,
       tools: {
         tavily_search: tool({
           description: 'Search the web for real-time information to verify claims or investigate URLs.',
@@ -150,11 +149,21 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    // Mapeamos exhaustivamente todas las fuentes de texto potenciales, incluyendo el historial de mensajes de la respuesta de Groq
-    const candidateTexts = [
-      text, 
-      ...steps.map((s) => s.text ?? ''),
-      ...messages.map((m) => typeof m.content === 'string' ? m.content : JSON.stringify(m.content))
+    const candidateTexts: string[] = [
+      result.text,
+      ...result.steps.map((s) => s.text ?? ''),
+      ...result.steps.flatMap((s) =>
+        s.response?.messages?.map((m) => {
+          if (typeof m.content === 'string') return m.content
+          if (Array.isArray(m.content)) {
+            return m.content
+              .filter((c: { type: string; text?: string }) => c.type === 'text')
+              .map((c: { type: string; text?: string }) => c.text ?? '')
+              .join('')
+          }
+          return ''
+        }) ?? []
+      ),
     ].filter(Boolean)
 
     let verdict
@@ -165,14 +174,13 @@ export async function POST(req: NextRequest) {
         const jsonMatch = candidate.match(/\{[\s\S]*\}/)
         if (jsonMatch) {
           verdict = JSON.parse(jsonMatch[0])
-          // Validación defensiva rápida de estructura
           if (verdict.verdict && verdict.summary) {
             parsed = true
             break
           }
         }
       } catch {
-        // Continuar buscando en el siguiente candidato
+        // continue
       }
     }
 
@@ -180,7 +188,7 @@ export async function POST(req: NextRequest) {
       verdict = {
         verdict: 'UNVERIFIABLE',
         confidence: 0,
-        summary: text || 'Agent returned no structured text',
+        summary: result.text || 'Agent returned no structured text',
         sources: [],
         flags: ['Agent response was not valid JSON or properties were missing'],
       }
@@ -188,7 +196,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       verdict,
-      steps: steps.length,
+      steps: result.steps.length,
       infraChecked: domain !== null,
       domain: domain ?? undefined,
     })
