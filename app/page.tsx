@@ -254,7 +254,7 @@ function IdleState({ onSubmit }: { onSubmit: (input: string, token: string) => v
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               onKeyDown={handleKeyDown}
-              placeholder={"Paste a news headline, claim, or URL to verify…\n\ne.g. \"NASA confirms water on Mars\" or https://suspicious-news.net/story"}
+              placeholder="Paste a news headline, claim, or URL to verify… e.g. &quot;NASA confirms water on Mars&quot; or https://suspicious-news.net/story"
               rows={5}
               className="w-full resize-none bg-transparent px-4 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 text-sm sm:text-base font-light text-slate-800 placeholder:text-slate-400 focus:outline-none"
               style={{ fontFamily: "inherit" }}
@@ -296,6 +296,18 @@ function IdleState({ onSubmit }: { onSubmit: (input: string, token: string) => v
         />
 
         <p className="text-xs text-slate-400 font-light text-center max-w-md px-2">
+          This site is protected by hCaptcha and its{" "}
+          <a href="https://www.hcaptcha.com/privacy" target="_blank" rel="noopener noreferrer"
+            className="underline underline-offset-2 decoration-slate-300 hover:decoration-slate-500 transition-colors">
+            Privacy Policy
+          </a>{" "}and{" "}
+          <a href="https://www.hcaptcha.com/terms" target="_blank" rel="noopener noreferrer"
+            className="underline underline-offset-2 decoration-slate-300 hover:decoration-slate-500 transition-colors">
+            Terms of Service
+          </a>{" "}apply.
+        </p>
+
+        <p className="text-xs text-slate-400 font-light text-center max-w-md px-2">
           Powered by Llama-3.3-70b · Tavily Search · VirusTotal · RDAP ·{" "}
           <a
             href="https://github.com/aisurf3r/Fact-o-checker"
@@ -306,27 +318,7 @@ function IdleState({ onSubmit }: { onSubmit: (input: string, token: string) => v
             GitHub
           </a>
         </p>
-        <p className="text-xs text-slate-400 font-light text-center max-w-md px-2">
-          This site is protected by hCaptcha and its{" "}
-          <a
-            href="https://www.hcaptcha.com/privacy"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 decoration-slate-300 hover:decoration-slate-500 transition-colors"
-          >
-            Privacy Policy
-          </a>{" "}
-          and{" "}
-          <a
-            href="https://www.hcaptcha.com/terms"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 decoration-slate-300 hover:decoration-slate-500 transition-colors"
-          >
-            Terms of Service
-          </a>{" "}
-          apply.
-        </p>
+
       </div>
     </div>
   )
