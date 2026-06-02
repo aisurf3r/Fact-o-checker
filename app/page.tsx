@@ -278,6 +278,17 @@ function IdleState({ onSubmit }: { onSubmit: (input: string, token: string) => v
               </button>
             </div>
           </div>
+          {/* hCaptcha invisible — inside form, no flex impact */}
+          <div style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
+            <HCaptcha
+              ref={hcaptchaRef}
+              sitekey="4d2cfb8a-af1a-4eac-8f78-83ccdbc4b60c"
+              size="invisible"
+              theme="light"
+              onVerify={handleVerify}
+              onExpire={handleExpire}
+            />
+          </div>
         </form>
 
         <p className="w-full text-xs text-slate-400 font-light text-center px-2">
@@ -298,16 +309,6 @@ function IdleState({ onSubmit }: { onSubmit: (input: string, token: string) => v
             <CapabilityPill key={pill.label} icon={pill.icon} label={pill.label} />
           ))}
         </div>
-
-        {/* hCaptcha invisible widget */}
-        <HCaptcha
-          ref={hcaptchaRef}
-          sitekey="4d2cfb8a-af1a-4eac-8f78-83ccdbc4b60c"
-          size="invisible"
-          theme="light"
-          onVerify={handleVerify}
-          onExpire={handleExpire}
-        />
 
         <p className="text-xs text-slate-400 font-light text-center max-w-md px-2">
           Powered by Llama-3.3-70b · Tavily Search · VirusTotal · RDAP ·{" "}
