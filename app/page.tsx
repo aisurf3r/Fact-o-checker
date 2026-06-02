@@ -222,7 +222,7 @@ function IdleState({ onSubmit }: { onSubmit: (input: string) => void }) {
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               onKeyDown={handleKeyDown}
-              placeholder={"Paste a news headline, claim, or URL to verify…\n\ne.g. \"NASA confirms water on Mars\" or https://suspicious-news.net/story"}
+              placeholder="Paste a news headline, claim, or URL to verify… e.g. &quot;NASA confirms water on Mars&quot; or https://suspicious-news.net/story"
               rows={5}
               className="w-full resize-none bg-transparent px-4 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 text-sm sm:text-base font-light text-slate-800 placeholder:text-slate-400 focus:outline-none"
               style={{ fontFamily: "inherit" }}
