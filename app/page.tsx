@@ -11,8 +11,20 @@ import {
   RotateCcw,
 } from "lucide-react"
 
+// Inline cn — no external dependency needed
 function cn(...classes: (string | undefined | false | null)[]): string {
   return classes.filter(Boolean).join(" ")
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function isUrl(input: string): boolean {
+  try {
+    const url = new URL(input.trim())
+    return ['http:', 'https:'].includes(url.protocol)
+  } catch {
+    return false
+  }
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -222,7 +234,7 @@ function IdleState({ onSubmit }: { onSubmit: (input: string) => void }) {
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               onKeyDown={handleKeyDown}
-              placeholder="Paste a news headline, claim, or URL to verify… e.g. &quot;NASA confirms water on Mars&quot; or https://suspicious-news.net/story"
+              placeholder={"Paste a news headline, claim, or URL to verify…\n\ne.g. \"NASA confirms water on Mars\" or https://suspicious-news.net/story"}
               rows={5}
               className="w-full resize-none bg-transparent px-4 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 text-sm sm:text-base font-light text-slate-800 placeholder:text-slate-400 focus:outline-none"
               style={{ fontFamily: "inherit" }}
@@ -275,10 +287,12 @@ function LoadingState({
   input,
   isReady,
   onComplete,
+  stepCount,
 }: {
   input: string
   isReady: boolean
   onComplete: () => void
+  stepCount: number
 }) {
   const [visibleSteps, setVisibleSteps] = useState<number[]>([])
   const [showFinal, setShowFinal] = useState(false)
@@ -286,13 +300,13 @@ function LoadingState({
 
   // Reveal steps progressively — keep last one blinking until agent responds
   useEffect(() => {
-    const timers = LOADING_STEPS.map((_, i) =>
+    const timers = LOADING_STEPS.slice(0, stepCount).map((_, i) =>
       setTimeout(() => {
         setVisibleSteps((prev) => (prev.includes(i) ? prev : [...prev, i]))
       }, i * 900)
     )
     return () => timers.forEach(clearTimeout)
-  }, [])
+  }, [stepCount])
 
   // When agent responds: show final step, fade, notify parent
   useEffect(() => {
@@ -368,7 +382,7 @@ function LoadingState({
             {showFinal && (
               <div className="step-fade-in flex gap-2 sm:gap-3">
                 <span className="text-slate-600 shrink-0 text-xs sm:text-sm">
-                  [{formatStepNum(LOADING_STEPS.length)}]
+                  [{formatStepNum(stepCount)}]
                 </span>
                 <span className="text-emerald-400 break-words min-w-0 font-semibold">
                   ✓ Verdict ready — rendering result...
@@ -630,6 +644,7 @@ export default function Page() {
             input={input}
             isReady={pendingResult !== null}
             onComplete={handleLoadingComplete}
+            stepCount={isUrl(input) ? 9 : 5}
           />
         )}
 
