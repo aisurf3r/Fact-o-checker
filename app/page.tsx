@@ -279,6 +279,18 @@ function IdleState({ onSubmit }: { onSubmit: (input: string, token: string) => v
           </div>
         </form>
 
+        <p className="w-full text-xs text-slate-400 font-light text-center px-2">
+          This site is protected by hCaptcha and its{" "}
+          <a href="https://www.hcaptcha.com/privacy" target="_blank" rel="noopener noreferrer"
+            className="underline underline-offset-2 decoration-slate-300 hover:decoration-slate-500 transition-colors">
+            Privacy Policy
+          </a>{" "}and{" "}
+          <a href="https://www.hcaptcha.com/terms" target="_blank" rel="noopener noreferrer"
+            className="underline underline-offset-2 decoration-slate-300 hover:decoration-slate-500 transition-colors">
+            Terms of Service
+          </a>{" "}apply.
+        </p>
+
         <div className="flex w-full items-stretch gap-2 sm:gap-3">
           {CAPABILITY_PILLS.map((pill) => (
             <CapabilityPill key={pill.label} icon={pill.icon} label={pill.label} />
@@ -294,18 +306,6 @@ function IdleState({ onSubmit }: { onSubmit: (input: string, token: string) => v
           onVerify={handleVerify}
           onExpire={handleExpire}
         />
-
-        <p className="text-xs text-slate-400 font-light text-center max-w-md px-2">
-          This site is protected by hCaptcha and its{" "}
-          <a href="https://www.hcaptcha.com/privacy" target="_blank" rel="noopener noreferrer"
-            className="underline underline-offset-2 decoration-slate-300 hover:decoration-slate-500 transition-colors">
-            Privacy Policy
-          </a>{" "}and{" "}
-          <a href="https://www.hcaptcha.com/terms" target="_blank" rel="noopener noreferrer"
-            className="underline underline-offset-2 decoration-slate-300 hover:decoration-slate-500 transition-colors">
-            Terms of Service
-          </a>{" "}apply.
-        </p>
 
         <p className="text-xs text-slate-400 font-light text-center max-w-md px-2">
           Powered by Llama-3.3-70b · Tavily Search · VirusTotal · RDAP ·{" "}
