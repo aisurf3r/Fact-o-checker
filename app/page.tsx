@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import {
   Shield,
   Globe,
@@ -10,6 +10,7 @@ import {
   ChevronRight,
   RotateCcw,
 } from "lucide-react"
+import HCaptcha from "@hcaptcha/react-hcaptcha"
 
 // Inline cn — no external dependency needed
 function cn(...classes: (string | undefined | false | null)[]): string {
@@ -200,20 +201,39 @@ function CapabilityPill({ icon: Icon, label }: { icon: React.ElementType; label:
 
 // ─── Idle State ───────────────────────────────────────────────────────────────
 
-function IdleState({ onSubmit }: { onSubmit: (input: string) => void }) {
+function IdleState({ onSubmit }: { onSubmit: (input: string, token: string) => void }) {
   const [value, setValue] = useState("")
   const [isFocused, setIsFocused] = useState(false)
+  const [isExecuting, setIsExecuting] = useState(false)
+  const hcaptchaRef = useRef<HCaptcha>(null)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (value.trim()) onSubmit(value.trim())
+    if (value.trim() && !isExecuting) {
+      setIsExecuting(true)
+      hcaptchaRef.current?.execute()
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
-      if (value.trim()) onSubmit(value.trim())
+      if (value.trim() && !isExecuting) {
+        setIsExecuting(true)
+        hcaptchaRef.current?.execute()
+      }
     }
+  }
+
+  const handleVerify = useCallback((token: string) => {
+    setIsExecuting(false)
+    hcaptchaRef.current?.resetCaptcha()
+    onSubmit(value.trim(), token)
+  }, [value, onSubmit])
+
+  const handleExpire = () => {
+    setIsExecuting(false)
+    hcaptchaRef.current?.resetCaptcha()
   }
 
   return (
@@ -234,7 +254,7 @@ function IdleState({ onSubmit }: { onSubmit: (input: string) => void }) {
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               onKeyDown={handleKeyDown}
-              placeholder="Paste a news headline, claim, or URL to verify… e.g. &quot;NASA confirms water on Mars&quot; or https://suspicious-news.net/story"
+              placeholder={"Paste a news headline, claim, or URL to verify…\n\ne.g. \"NASA confirms water on Mars\" or https://suspicious-news.net/story"}
               rows={5}
               className="w-full resize-none bg-transparent px-4 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 text-sm sm:text-base font-light text-slate-800 placeholder:text-slate-400 focus:outline-none"
               style={{ fontFamily: "inherit" }}
@@ -245,12 +265,12 @@ function IdleState({ onSubmit }: { onSubmit: (input: string) => void }) {
               </span>
               <button
                 type="submit"
-                disabled={!value.trim()}
+                disabled={!value.trim() || isExecuting}
                 className={cn(
                   "shimmer-btn flex items-center gap-2 rounded-xl px-4 sm:px-5 py-2 sm:py-2.5 text-sm font-semibold text-white transition-all duration-200",
                   "disabled:opacity-40 disabled:cursor-not-allowed disabled:animate-none disabled:bg-slate-400"
                 )}
-                style={!value.trim() ? { background: "#94a3b8", animation: "none" } : {}}
+                style={!value.trim() || isExecuting ? { background: "#94a3b8", animation: "none" } : {}}
               >
                 Verify
                 <ChevronRight size={16} />
@@ -265,6 +285,16 @@ function IdleState({ onSubmit }: { onSubmit: (input: string) => void }) {
           ))}
         </div>
 
+        {/* hCaptcha invisible widget */}
+        <HCaptcha
+          ref={hcaptchaRef}
+          sitekey="4d2cfb8a-af1a-4eac-8f78-83ccdbc4b60c"
+          size="invisible"
+          theme="light"
+          onVerify={handleVerify}
+          onExpire={handleExpire}
+        />
+
         <p className="text-xs text-slate-400 font-light text-center max-w-md px-2">
           Powered by Llama-3.3-70b · Tavily Search · VirusTotal · RDAP ·{" "}
           <a
@@ -275,6 +305,27 @@ function IdleState({ onSubmit }: { onSubmit: (input: string) => void }) {
           >
             GitHub
           </a>
+        </p>
+        <p className="text-xs text-slate-400 font-light text-center max-w-md px-2">
+          This site is protected by hCaptcha and its{" "}
+          <a
+            href="https://www.hcaptcha.com/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 decoration-slate-300 hover:decoration-slate-500 transition-colors"
+          >
+            Privacy Policy
+          </a>{" "}
+          and{" "}
+          <a
+            href="https://www.hcaptcha.com/terms"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 decoration-slate-300 hover:decoration-slate-500 transition-colors"
+          >
+            Terms of Service
+          </a>{" "}
+          apply.
         </p>
       </div>
     </div>
@@ -574,7 +625,7 @@ export default function Page() {
   const [pendingResult, setPendingResult] = useState<ApiResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = async (userInput: string) => {
+  const handleSubmit = async (userInput: string, hcaptchaToken: string) => {
     setInput(userInput)
     setError(null)
     setResult(null)
@@ -585,7 +636,7 @@ export default function Page() {
       const res = await fetch("/api/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input: userInput }),
+        body: JSON.stringify({ input: userInput, hcaptchaToken }),
       })
 
       const data: ApiResponse = await res.json()
