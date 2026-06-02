@@ -35,9 +35,10 @@ export const metadata: Metadata = {
       "Paste any news headline, claim, or URL and get an AI-powered fact-check verdict in seconds.",
   },
   twitter: {
-    card: "summary_large_image",
+    card: "summary",
     title: "Fact·O·Checker — Autonomous OSINT Verification Agent",
-    description: "Paste any news headline, claim, or URL and get an AI-powered fact-check verdict in seconds.",
+    description:
+      "Paste any news headline, claim, or URL and get an AI-powered fact-check verdict in seconds.",
     creator: "@aisurf3r",
   },
   robots: {
@@ -51,9 +52,7 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
-  icons: {
-  icon: '/favicon.ico',
-  },
+
 }
 
 export default function RootLayout({
