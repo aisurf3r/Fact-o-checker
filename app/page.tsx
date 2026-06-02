@@ -1,6 +1,5 @@
 "use client"
 
-import { cn } from "@/lib/utils"
 import { useState, useEffect } from "react"
 import {
   Shield,
@@ -12,10 +11,13 @@ import {
   RotateCcw,
 } from "lucide-react"
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+function cn(...classes: (string | undefined | false | null)[]): string {
+  return classes.filter(Boolean).join(" ")
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type AppState = "idle" | "loading" | "result"
-
 type VerdictType = "REAL" | "FAKE" | "SUSPICIOUS" | "UNVERIFIABLE"
 
 interface VerdictData {
@@ -34,7 +36,7 @@ interface ApiResponse {
   error?: string
 }
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const LOADING_STEPS = [
   "Initializing OSINT agent...",
@@ -88,7 +90,7 @@ const CAPABILITY_PILLS = [
   { icon: Search, label: "WHOIS Lookup" },
 ]
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function AnimatedBlobs() {
   return (
@@ -110,14 +112,14 @@ function AnimatedBlobs() {
 }
 
 const FLIP_COLORS = [
-  "#0EA5E9", // sky
-  "#10B981", // emerald
-  "#F59E0B", // amber
-  "#EF4444", // red
-  "#3B82F6", // blue
-  "#8B5CF6", // violet — only used when user hasn't banned it; keeping per brand needs
-  "#06B6D4", // cyan
-  "#F97316", // orange
+  "#0EA5E9",
+  "#10B981",
+  "#F59E0B",
+  "#EF4444",
+  "#3B82F6",
+  "#8B5CF6",
+  "#06B6D4",
+  "#F97316",
 ]
 
 function FlipO({ compact = false }: { compact?: boolean }) {
@@ -153,12 +155,7 @@ function FlipO({ compact = false }: { compact?: boolean }) {
 
 function Logo({ compact = false }: { compact?: boolean }) {
   return (
-    <div
-      className={cn(
-        "flex flex-col items-center select-none",
-        compact ? "gap-1" : "gap-2"
-      )}
-    >
+    <div className={cn("flex flex-col items-center select-none", compact ? "gap-1" : "gap-2")}>
       <div
         className={cn(
           "font-black tracking-tighter leading-none",
@@ -180,13 +177,7 @@ function Logo({ compact = false }: { compact?: boolean }) {
   )
 }
 
-function CapabilityPill({
-  icon: Icon,
-  label,
-}: {
-  icon: React.ElementType
-  label: string
-}) {
+function CapabilityPill({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
   return (
     <div className="capability-pill glass-card flex flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-full px-3 sm:px-4 py-2.5 cursor-default min-w-0">
       <Icon size={13} className="text-sky-500 shrink-0" />
@@ -197,11 +188,7 @@ function CapabilityPill({
 
 // ─── Idle State ───────────────────────────────────────────────────────────────
 
-function IdleState({
-  onSubmit,
-}: {
-  onSubmit: (input: string) => void
-}) {
+function IdleState({ onSubmit }: { onSubmit: (input: string) => void }) {
   const [value, setValue] = useState("")
   const [isFocused, setIsFocused] = useState(false)
 
@@ -220,10 +207,8 @@ function IdleState({
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4 sm:px-6 py-12 sm:py-16">
       <div className="w-full max-w-2xl flex flex-col items-center gap-8 sm:gap-10">
-        {/* Logo */}
         <Logo />
 
-        {/* Input form */}
         <form onSubmit={handleSubmit} className="w-full flex flex-col gap-4">
           <div
             className={cn(
@@ -237,7 +222,7 @@ function IdleState({
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               onKeyDown={handleKeyDown}
-              placeholder="Paste a news headline, claim, or URL to verify…&#10;&#10;e.g. &quot;NASA confirms water on Mars&quot; or https://suspicious-news.net/story"
+              placeholder={"Paste a news headline, claim, or URL to verify…\n\ne.g. \"NASA confirms water on Mars\" or https://suspicious-news.net/story"}
               rows={5}
               className="w-full resize-none bg-transparent px-4 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 text-sm sm:text-base font-light text-slate-800 placeholder:text-slate-400 focus:outline-none"
               style={{ fontFamily: "inherit" }}
@@ -262,7 +247,6 @@ function IdleState({
           </div>
         </form>
 
-        {/* Capability pills  */}
         <div className="flex w-full items-stretch gap-2 sm:gap-3">
           {CAPABILITY_PILLS.map((pill) => (
             <CapabilityPill key={pill.label} icon={pill.icon} label={pill.label} />
@@ -300,28 +284,22 @@ function LoadingState({
   const [showFinal, setShowFinal] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
 
-  // Show steps progressively — keep cycling last one until agent responds
+  // Reveal steps progressively — keep last one blinking until agent responds
   useEffect(() => {
-    const STEP_INTERVAL = 900
-    const timers: ReturnType<typeof setTimeout>[] = []
-
-    LOADING_STEPS.forEach((_, i) => {
-      timers.push(
-        setTimeout(() => {
-          setVisibleSteps((prev) => (prev.includes(i) ? prev : [...prev, i]))
-        }, i * STEP_INTERVAL)
-      )
-    })
-
+    const timers = LOADING_STEPS.map((_, i) =>
+      setTimeout(() => {
+        setVisibleSteps((prev) => (prev.includes(i) ? prev : [...prev, i]))
+      }, i * 900)
+    )
     return () => timers.forEach(clearTimeout)
   }, [])
 
-  // When agent responds: append final step, fade, notify parent
+  // When agent responds: show final step, fade, notify parent
   useEffect(() => {
     if (!isReady) return
     setShowFinal(true)
     const fadeTimer = setTimeout(() => setIsComplete(true), 600)
-    const doneTimer = setTimeout(() => onComplete(), 600 + 700)
+    const doneTimer = setTimeout(() => onComplete(), 1300)
     return () => {
       clearTimeout(fadeTimer)
       clearTimeout(doneTimer)
@@ -331,11 +309,15 @@ function LoadingState({
   const formatStepNum = (i: number) => String(i + 1).padStart(2, "0")
 
   return (
-    <div className={cn("flex min-h-screen flex-col items-center justify-center px-4 sm:px-6 py-12 sm:py-16 transition-opacity duration-700", isComplete ? "opacity-0" : "opacity-100")}>
+    <div
+      className={cn(
+        "flex min-h-screen flex-col items-center justify-center px-4 sm:px-6 py-12 sm:py-16 transition-opacity duration-700",
+        isComplete ? "opacity-0" : "opacity-100"
+      )}
+    >
       <div className="w-full max-w-2xl flex flex-col items-center gap-6 sm:gap-10">
         <Logo compact />
 
-        {/* Input preview */}
         <div className="glass-card w-full rounded-2xl px-4 sm:px-5 py-4">
           <p className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-2">
             Analyzing
@@ -345,15 +327,13 @@ function LoadingState({
           </p>
         </div>
 
-        {/* Terminal — expands as steps appear */}
         <div
-          className="w-full rounded-2xl overflow-hidden terminal-container"
+          className="w-full rounded-2xl overflow-hidden"
           style={{
             background: "rgba(15, 23, 42, 0.96)",
             boxShadow: "0 20px 60px rgba(0, 0, 0, 0.25)",
           }}
         >
-          {/* Terminal titlebar */}
           <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-white/10">
             <span className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-red-500/70" />
             <span className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-yellow-500/70" />
@@ -363,8 +343,7 @@ function LoadingState({
             </span>
           </div>
 
-          {/* Terminal body — grows with content, no fixed min-height on mobile */}
-          <div className="terminal-body px-3 sm:px-6 py-4 sm:py-5 font-mono text-xs sm:text-sm min-h-[180px] sm:min-h-[240px] flex flex-col gap-1.5 sm:gap-2 overflow-y-auto max-h-[50vh] sm:max-h-[60vh]">
+          <div className="px-3 sm:px-6 py-4 sm:py-5 font-mono text-xs sm:text-sm min-h-[180px] sm:min-h-[240px] flex flex-col gap-1.5 sm:gap-2 overflow-y-auto max-h-[50vh] sm:max-h-[60vh]">
             {visibleSteps.map((i) => {
               const isLast = i === Math.max(...visibleSteps) && !showFinal
               return (
@@ -377,7 +356,7 @@ function LoadingState({
                   </span>
                   <span
                     className={cn(
-                      "transition-colors break-words min-w-0",
+                      "break-words min-w-0",
                       isLast ? "text-sky-400" : "text-slate-400"
                     )}
                   >
@@ -434,9 +413,8 @@ function ResultState({
   }, [v.confidence])
 
   return (
-    <div className="flex min-h-screen flex-col items-center px-4 sm:px-6 py-12 sm:py-16 result-fade-in">
+    <div className="flex min-h-screen flex-col items-center px-4 sm:px-6 py-12 sm:py-16 card-in">
       <div className="w-full max-w-2xl flex flex-col items-center gap-6 sm:gap-8">
-        {/* Logo + reset */}
         <div className="flex w-full items-center justify-between gap-3">
           <Logo compact />
           <button
@@ -448,7 +426,6 @@ function ResultState({
           </button>
         </div>
 
-        {/* Input preview */}
         <div className="glass-card w-full rounded-2xl px-4 sm:px-5 py-4">
           <p className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-1.5">
             Verified
@@ -458,13 +435,10 @@ function ResultState({
           </p>
         </div>
 
-        {/* Verdict card */}
-        <div className={cn("card-in glass-card w-full rounded-2xl overflow-hidden")}>
-          {/* Colored top border */}
+        <div className="card-in glass-card w-full rounded-2xl overflow-hidden">
           <div className="h-1 w-full" style={{ background: cfg.color }} />
 
           <div className="p-5 sm:p-7 flex flex-col gap-5 sm:gap-6">
-            {/* Verdict badge + confidence */}
             <div className="flex flex-wrap items-center gap-3 sm:gap-4">
               <span
                 className={cn(
@@ -483,7 +457,6 @@ function ResultState({
                 <span className="text-sm text-slate-400 font-light">confidence</span>
               </div>
 
-              {/* Infra badge — wraps on mobile */}
               {infraChecked && domain && (
                 <div
                   className="flex items-center gap-1.5 sm:gap-2 rounded-full px-3 py-1.5 text-xs font-semibold"
@@ -500,7 +473,6 @@ function ResultState({
               )}
             </div>
 
-            {/* Progress bar */}
             <div className="relative h-2 w-full rounded-full bg-slate-100 overflow-hidden">
               <div
                 className="absolute inset-y-0 left-0 rounded-full transition-all ease-out"
@@ -513,12 +485,10 @@ function ResultState({
               />
             </div>
 
-            {/* Summary */}
             <p className="text-sm sm:text-base font-light leading-relaxed text-slate-700">
               {v.summary}
             </p>
 
-            {/* Flags */}
             {v.flags && v.flags.length > 0 && (
               <div className="flex flex-col gap-2">
                 <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
@@ -543,7 +513,6 @@ function ResultState({
               </div>
             )}
 
-            {/* Sources — always single-column list, full URL visible */}
             {v.sources && v.sources.length > 0 && (
               <div className="flex flex-col gap-2">
                 <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
@@ -570,7 +539,6 @@ function ResultState({
               </div>
             )}
 
-            {/* Steps count */}
             <div className="border-t border-slate-100 pt-4">
               <p className="text-xs text-slate-400 font-light font-mono">
                 Agent completed {result.steps} reasoning step{result.steps !== 1 ? "s" : ""}
@@ -596,6 +564,7 @@ export default function Page() {
     setInput(userInput)
     setError(null)
     setResult(null)
+    setPendingResult(null)
     setAppState("loading")
 
     try {
