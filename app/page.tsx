@@ -241,6 +241,7 @@ function IdleState({ onSubmit }: { onSubmit: (input: string, token: string) => v
       <div className="w-full max-w-2xl flex flex-col items-center gap-8 sm:gap-10">
         <Logo />
 
+        <div className="w-full flex flex-col gap-1.5">
         <form onSubmit={handleSubmit} className="w-full flex flex-col gap-4">
           <div
             className={cn(
@@ -290,6 +291,7 @@ function IdleState({ onSubmit }: { onSubmit: (input: string, token: string) => v
             Terms of Service
           </a>{" "}apply.
         </p>
+        </div>
 
         <div className="flex w-full items-stretch gap-2 sm:gap-3">
           {CAPABILITY_PILLS.map((pill) => (
