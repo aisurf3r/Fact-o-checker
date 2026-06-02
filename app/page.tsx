@@ -12,7 +12,6 @@ import {
 } from "lucide-react"
 import HCaptcha from "@hcaptcha/react-hcaptcha"
 
-// Inline cn — no external dependency needed
 function cn(...classes: (string | undefined | false | null)[]): string {
   return classes.filter(Boolean).join(" ")
 }
