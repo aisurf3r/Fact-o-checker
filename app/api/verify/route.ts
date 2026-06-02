@@ -29,6 +29,26 @@ function fetchWithTimeout(url: string, options: RequestInit = {}): Promise<Respo
   return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer))
 }
 
+async function verifyHCaptcha(token: string): Promise<boolean> {
+  const secret = process.env.HCAPTCHA_SECRET_KEY
+  if (!secret) {
+    console.warn('HCAPTCHA_SECRET_KEY not set — skipping captcha verification')
+    return true
+  }
+  try {
+    const res = await fetchWithTimeout('https://hcaptcha.com/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ secret, response: token }).toString(),
+    })
+    const data = await res.json()
+    return data.success === true
+  } catch {
+    console.error('hCaptcha verification failed')
+    return false
+  }
+}
+
 const SYSTEM_PROMPT = `You are a Senior OSINT Officer specialized in disinformation detection.
 
 When given a URL or a news claim, your job is to:
@@ -59,10 +79,19 @@ Rules:
 
 export async function POST(req: NextRequest) {
   try {
-    const { input } = await req.json()
+    const { input, hcaptchaToken } = await req.json()
 
     if (!input || typeof input !== 'string') {
       return NextResponse.json({ error: 'Missing input' }, { status: 400 })
+    }
+
+    if (!hcaptchaToken || typeof hcaptchaToken !== 'string') {
+      return NextResponse.json({ error: 'Missing captcha token' }, { status: 400 })
+    }
+
+    const captchaValid = await verifyHCaptcha(hcaptchaToken)
+    if (!captchaValid) {
+      return NextResponse.json({ error: 'Captcha verification failed' }, { status: 403 })
     }
 
     const vtKey = process.env.VIRUSTOTAL_API_KEY
