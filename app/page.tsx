@@ -527,7 +527,8 @@ function GlobeView({ geoData }: { geoData: GeoData }) {
             ringMaxRadius={4}
             ringPropagationSpeed={1.5}
             ringRepeatPeriod={900}
-            onGlobeReady={(globe: { pointOfView: (opts: { lat: number; lng: number; altitude: number }) => void }) =>
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            onGlobeReady={(globe: any) =>
               globe.pointOfView({ lat: geoData.lat, lng: geoData.lon, altitude: 1.8 })
             }
           />
