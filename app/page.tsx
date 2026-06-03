@@ -469,6 +469,7 @@ function LoadingState({
 
 function GlobeView({ geoData }: { geoData: GeoData }) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const globeRef = useRef<any>(null)
   const [size, setSize] = useState(300)
   const [mounted, setMounted] = useState(false)
 
@@ -484,6 +485,14 @@ function GlobeView({ geoData }: { geoData: GeoData }) {
     window.addEventListener("resize", update)
     return () => window.removeEventListener("resize", update)
   }, [])
+
+  useEffect(() => {
+    if (mounted && globeRef.current) {
+      setTimeout(() => {
+        globeRef.current?.pointOfView({ lat: geoData.lat, lng: geoData.lon, altitude: 1.8 }, 1000)
+      }, 500)
+    }
+  }, [mounted, geoData.lat, geoData.lon])
 
   const point = [{ lat: geoData.lat, lng: geoData.lon }]
 
@@ -512,6 +521,7 @@ function GlobeView({ geoData }: { geoData: GeoData }) {
       >
         {mounted && (
           <GlobeGL
+            ref={globeRef}
             width={size}
             height={size}
             backgroundColor="rgba(0,0,0,0)"
@@ -527,10 +537,6 @@ function GlobeView({ geoData }: { geoData: GeoData }) {
             ringMaxRadius={4}
             ringPropagationSpeed={1.5}
             ringRepeatPeriod={900}
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            onGlobeReady={(globe: any) =>
-              globe.pointOfView({ lat: geoData.lat, lng: geoData.lon, altitude: 1.8 })
-            }
           />
         )}
       </div>
