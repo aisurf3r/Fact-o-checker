@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import HCaptcha from "@hcaptcha/react-hcaptcha"
 
+// Inline cn — no external dependency needed
 function cn(...classes: (string | undefined | false | null)[]): string {
   return classes.filter(Boolean).join(" ")
 }
@@ -124,7 +125,7 @@ function AnimatedBlobs() {
 }
 
 const FLIP_COLORS = [
-  "#4ABEED",
+  "#0EA5E9",
   "#10B981",
   "#F59E0B",
   "#EF4444",
@@ -178,7 +179,7 @@ function Logo({ compact = false }: { compact?: boolean }) {
         <span className="text-slate-900">FACT·</span>
         <FlipO compact={compact} />
         <span className="text-slate-900">·</span>
-        <span style={{ color: "#4ABEED" }}>CHECKER</span>
+        <span style={{ color: "#0EA5E9" }}>CHECKER</span>
       </div>
       {!compact && (
         <p className="text-xs sm:text-sm font-light tracking-[0.2em] sm:tracking-[0.3em] text-slate-400 uppercase text-center">
@@ -554,20 +555,40 @@ function ResultState({
                   Flags
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {v.flags.map((flag, i) => (
-                    <span
-                      key={i}
-                      className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium"
-                      style={{
-                        background: "rgba(245, 158, 11, 0.1)",
-                        color: "#92400e",
-                        border: "1px solid rgba(245, 158, 11, 0.3)",
-                      }}
-                    >
-                      <AlertTriangle size={11} className="shrink-0" style={{ color: "#F59E0B" }} />
-                      {flag}
-                    </span>
-                  ))}
+                  {v.flags.map((flag, i) => {
+                    const lower = flag.toLowerCase()
+                    const isPositive =
+                      lower.includes("clean") ||
+                      lower.includes("0 malicious") ||
+                      (lower.includes("registered") && (
+                        lower.includes("year") ||
+                        /registered \d{3,}/.test(lower)
+                      ))
+                    const isCritical =
+                      lower.includes("malicious vote") ||
+                      lower.includes("flagged by virustotal") ||
+                      lower.includes("less than 30 days")
+
+                    const style = isPositive
+                      ? { background: "rgba(16, 185, 129, 0.1)", color: "#065f46", border: "1px solid rgba(16, 185, 129, 0.3)" }
+                      : isCritical
+                      ? { background: "rgba(239, 68, 68, 0.1)", color: "#7f1d1d", border: "1px solid rgba(239, 68, 68, 0.3)" }
+                      : { background: "rgba(245, 158, 11, 0.1)", color: "#92400e", border: "1px solid rgba(245, 158, 11, 0.3)" }
+
+                    const iconColor = isPositive ? "#10B981" : isCritical ? "#EF4444" : "#F59E0B"
+                    const Icon = isPositive ? Shield : AlertTriangle
+
+                    return (
+                      <span
+                        key={i}
+                        className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium"
+                        style={style}
+                      >
+                        <Icon size={11} className="shrink-0" style={{ color: iconColor }} />
+                        {flag}
+                      </span>
+                    )
+                  })}
                 </div>
               </div>
             )}
