@@ -67,8 +67,9 @@ Your verdict must ALWAYS be valid JSON with this exact shape:
 }
 
 Rules:
-- ONLY if you called whois_lookup: if the domain is younger than 30 days, set verdict to SUSPICIOUS and add "Domain registered less than 30 days ago" to flags. Never add domain age flags without calling whois_lookup first.
-- ONLY if you called virustotal_check: if malicious or suspicious votes > 0, add "Domain flagged by VirusTotal" to flags. Never add VirusTotal flags without calling virustotal_check first.
+- ONLY if you called whois_lookup: always add a flag with the domain age, e.g. "Domain registered 8,432 days ago (since 2001)" or "Domain registered 12 days ago ⚠️". If younger than 30 days, also set verdict to SUSPICIOUS.
+- ONLY if you called virustotal_check: always add a flag with the reputation result, e.g. "VirusTotal: clean — 0 malicious, 87 harmless votes" or "VirusTotal: 3 malicious votes detected ⚠️". Never fabricate VirusTotal data.
+- Never add domain or infrastructure flags without calling the respective tool first.
 - If no URL was provided, do NOT add any domain or infrastructure flags
 - If multiple credible sources corroborate the claim, lean toward REAL
 - If no sources found at all, return UNVERIFIABLE
