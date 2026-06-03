@@ -13,7 +13,7 @@ import {
 import HCaptcha from "@hcaptcha/react-hcaptcha"
 import dynamic from "next/dynamic"
 
-const GlobeGL = dynamic(() => import("react-globe.gl"), { ssr: false })
+const GlobeGL = dynamic(() => import("react-globe.gl").then((mod) => ({ default: mod.default ?? mod })), { ssr: false })
 
 // Inline cn — no external dependency needed
 function cn(...classes: (string | undefined | false | null)[]): string {
