@@ -71,9 +71,9 @@ Rules:
   * Domain age: "Domain registered X days ago (since YEAR)" — use the exact ageDays value from the tool result
   * Registrar: "Registrar: [registrar name]" — only if registrar field is not null
   * If ageDays < 30: also set verdict to SUSPICIOUS
-- ONLY if you called virustotal_check AND received real data: add these flags from the actual tool result:
-  * Reputation: "VirusTotal: clean — 0 malicious, X harmless votes" OR "VirusTotal: X malicious votes detected ⚠️"
-  * Categories: "Hosting category: [category]" — only if categories array is not empty
+- ONLY if you called virustotal_check AND received real data: add these flags using EXACT numbers from the tool result JSON:
+  * Reputation: "VirusTotal: clean — [exact malicious value] malicious, [exact harmless value] harmless votes" — use the EXACT numbers returned, never invent them
+  * Categories: "Hosting category: [categories]" — ONLY if categories array has at least one item. If categories is empty array [], do NOT add this flag.
 - ABSOLUTE RULE: if you did NOT call whois_lookup, you MUST NOT add any flag mentioning domain age, registration date, or domain history. Zero exceptions.
 - ABSOLUTE RULE: if you did NOT call virustotal_check, you MUST NOT add any flag mentioning VirusTotal, malicious votes, or reputation. Zero exceptions.
 - ABSOLUTE RULE: if the input was plain text with no URL, do NOT add any infrastructure flags whatsoever.
