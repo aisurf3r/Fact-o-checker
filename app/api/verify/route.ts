@@ -106,8 +106,8 @@ export async function POST(req: NextRequest) {
 
     const domain = extractDomain(input)
     const prompt = domain
-      ? `Verify the following: ${input}\n\nExtracted domain for infrastructure checks: ${domain}`
-      : `Verify the following: ${input}`
+      ? `Verify the following: ${input}\n\nExtracted domain for infrastructure checks: ${domain}\nCALL virustotal_check AND whois_lookup on this domain.`
+      : `Verify the following: ${input}\n\nIMPORTANT: This is plain text, NOT a URL. Do NOT call virustotal_check or whois_lookup. Do NOT add any infrastructure or domain flags.`
 
     const { text, steps } = await generateText({
       model: groq('llama-3.3-70b-versatile'),
