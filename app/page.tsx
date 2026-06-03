@@ -124,7 +124,7 @@ function AnimatedBlobs() {
 }
 
 const FLIP_COLORS = [
-  "#0EA5E9",
+  "#4ABEED",
   "#10B981",
   "#F59E0B",
   "#EF4444",
