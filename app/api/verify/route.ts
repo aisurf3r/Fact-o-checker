@@ -77,6 +77,9 @@ Rules:
 - ABSOLUTE RULE: if you did NOT call whois_lookup, you MUST NOT add any flag mentioning domain age, registration date, or domain history. Zero exceptions.
 - ABSOLUTE RULE: if you did NOT call virustotal_check, you MUST NOT add any flag mentioning VirusTotal, malicious votes, or reputation. Zero exceptions.
 - ABSOLUTE RULE: if the input was plain text with no URL, do NOT add any infrastructure flags whatsoever.
+- ONLY if you called whois_lookup AND registrantCountry is not null: add flag "Registrant country: [country code]"
+- ONLY if you called virustotal_check AND categories array is not empty: add flag "Hosting category: [categories joined by comma]"
+- ALWAYS scan the Tavily search result URLs for known fact-checking domains. If any result URL contains: maldita.es, newtral.es, snopes.com, factcheck.org, afpfactcheck.com, politifact.com, verificat.cat, fullfact.org, chequeado.com — add flag "Fact-checked by: [domain name]". This is a positive signal.
 - If multiple credible sources corroborate the claim, lean toward REAL
 - If no sources found at all, return UNVERIFIABLE
 - Always use the search tool before making a verdict — never guess
