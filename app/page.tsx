@@ -11,9 +11,6 @@ import {
   RotateCcw,
 } from "lucide-react"
 import HCaptcha from "@hcaptcha/react-hcaptcha"
-import dynamic from "next/dynamic"
-
-const GlobeGL = dynamic(() => import("react-globe.gl").then((mod) => ({ default: mod.default ?? mod })), { ssr: false })
 
 // Inline cn — no external dependency needed
 function cn(...classes: (string | undefined | false | null)[]): string {
@@ -44,21 +41,11 @@ interface VerdictData {
   flags: string[]
 }
 
-interface GeoData {
-  lat: number
-  lon: number
-  city: string
-  country: string
-  org: string
-  ip: string
-}
-
 interface ApiResponse {
   verdict: VerdictData
   steps: number
   infraChecked: boolean
   domain?: string
-  geoData?: GeoData
   error?: string
 }
 
@@ -467,83 +454,6 @@ function LoadingState({
 
 // ─── Result State ─────────────────────────────────────────────────────────────
 
-function GlobeView({ geoData }: { geoData: GeoData }) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const globeRef = useRef<any>(null)
-  const [size, setSize] = useState(300)
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-    const update = () => {
-      if (containerRef.current) {
-        const w = containerRef.current.offsetWidth
-        setSize(Math.min(w, 380))
-      }
-    }
-    update()
-    window.addEventListener("resize", update)
-    return () => window.removeEventListener("resize", update)
-  }, [])
-
-  useEffect(() => {
-    if (mounted && globeRef.current) {
-      setTimeout(() => {
-        globeRef.current?.pointOfView({ lat: geoData.lat, lng: geoData.lon, altitude: 1.8 }, 1000)
-      }, 500)
-    }
-  }, [mounted, geoData.lat, geoData.lon])
-
-  const point = [{ lat: geoData.lat, lng: geoData.lon }]
-
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-          IP Location
-        </p>
-        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-mono">
-          <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-          <span>{geoData.ip}</span>
-          <span className="text-slate-300">·</span>
-          <span>{geoData.city}{geoData.city && geoData.country ? ", " : ""}{geoData.country}</span>
-        </div>
-      </div>
-      {geoData.org && (
-        <p className="text-xs text-slate-400 font-mono truncate">
-          {geoData.org}
-        </p>
-      )}
-      <div
-        ref={containerRef}
-        className="w-full overflow-hidden rounded-xl flex items-center justify-center"
-        style={{ background: "rgba(15, 23, 42, 0.96)", height: size }}
-      >
-        {mounted && (
-          <GlobeGL
-            ref={globeRef}
-            width={size}
-            height={size}
-            backgroundColor="rgba(0,0,0,0)"
-            globeImageUrl="https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
-            atmosphereColor="#0EA5E9"
-            atmosphereAltitude={0.15}
-            pointsData={point}
-            pointColor={() => "#EF4444"}
-            pointAltitude={0.08}
-            pointRadius={0.6}
-            ringsData={point}
-            ringColor={() => "rgba(239,68,68,0.6)"}
-            ringMaxRadius={4}
-            ringPropagationSpeed={1.5}
-            ringRepeatPeriod={900}
-          />
-        )}
-      </div>
-    </div>
-  )
-}
-
 function ResultState({
   result,
   input,
@@ -706,12 +616,6 @@ function ResultState({
                     </a>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {result.geoData && (
-              <div className="border-t border-slate-100 pt-5">
-                <GlobeView geoData={result.geoData} />
               </div>
             )}
 
