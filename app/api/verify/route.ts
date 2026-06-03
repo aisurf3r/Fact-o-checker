@@ -49,6 +49,36 @@ async function verifyHCaptcha(token: string): Promise<boolean> {
   }
 }
 
+interface GeoData {
+  lat: number
+  lon: number
+  city: string
+  country: string
+  org: string
+  ip: string
+}
+
+async function getGeoData(domain: string): Promise<GeoData | null> {
+  try {
+    const res = await fetchWithTimeout(`https://ipinfo.io/${encodeURIComponent(domain)}/json`)
+    if (!res.ok) return null
+    const data = await res.json()
+    if (!data.loc) return null
+    const [lat, lon] = data.loc.split(',').map(Number)
+    if (isNaN(lat) || isNaN(lon)) return null
+    return {
+      lat,
+      lon,
+      city: data.city ?? '',
+      country: data.country ?? '',
+      org: data.org ?? '',
+      ip: data.ip ?? '',
+    }
+  } catch {
+    return null
+  }
+}
+
 const SYSTEM_PROMPT = `You are a Senior OSINT Officer specialized in disinformation detection.
 
 When given a URL or a news claim, your job is to:
@@ -102,6 +132,8 @@ export async function POST(req: NextRequest) {
     const prompt = domain
       ? `Verify the following: ${input}\n\nExtracted domain for infrastructure checks: ${domain}`
       : `Verify the following: ${input}`
+
+    const geoPromise = domain ? getGeoData(domain) : Promise.resolve(null)
 
     const { text, steps } = await generateText({
       model: groq('llama-3.3-70b-versatile'),
@@ -243,11 +275,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const geoData = await geoPromise
+
     return NextResponse.json({
       verdict,
       steps: steps.length,
       infraChecked: domain !== null,
       domain: domain ?? undefined,
+      geoData: geoData ?? undefined,
     })
 
   } catch (err) {
