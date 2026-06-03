@@ -560,6 +560,10 @@ function ResultState({
                     const isPositive =
                       lower.includes("clean") ||
                       lower.includes("0 malicious") ||
+                      lower.includes("registrar:") ||
+                      lower.includes("registrant country:") ||
+                      lower.includes("hosting category:") ||
+                      lower.includes("fact-checked by:") ||
                       (lower.includes("registered") && (
                         lower.includes("year") ||
                         /registered \d{3,}/.test(lower)
