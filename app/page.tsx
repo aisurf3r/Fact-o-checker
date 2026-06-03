@@ -178,7 +178,7 @@ function Logo({ compact = false }: { compact?: boolean }) {
         <span className="text-slate-900">FACT·</span>
         <FlipO compact={compact} />
         <span className="text-slate-900">·</span>
-        <span style={{ color: "#0EA5E9" }}>CHECKER</span>
+        <span style={{ color: "#4ABEED" }}>CHECKER</span>
       </div>
       {!compact && (
         <p className="text-xs sm:text-sm font-light tracking-[0.2em] sm:tracking-[0.3em] text-slate-400 uppercase text-center">
