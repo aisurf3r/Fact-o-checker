@@ -13,7 +13,7 @@ import {
 import HCaptcha from "@hcaptcha/react-hcaptcha"
 import dynamic from "next/dynamic"
 
-const Globe = dynamic(() => import("react-globe.gl"), { ssr: false })
+const GlobeGL = dynamic(() => import("react-globe.gl"), { ssr: false })
 
 // Inline cn — no external dependency needed
 function cn(...classes: (string | undefined | false | null)[]): string {
@@ -511,7 +511,7 @@ function GlobeView({ geoData }: { geoData: GeoData }) {
         style={{ background: "rgba(15, 23, 42, 0.96)", height: size }}
       >
         {mounted && (
-          <Globe
+          <GlobeGL
             width={size}
             height={size}
             backgroundColor="rgba(0,0,0,0)"
