@@ -344,27 +344,34 @@ function LoadingState({
   const [showFinal, setShowFinal] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
 
-  // Reveal steps progressively — keep last one blinking until agent responds
+  // Reveal steps progressively — stop advancing when agent responds
   useEffect(() => {
+    if (isReady) return // agent already done, don't keep advancing
     const timers = LOADING_STEPS.slice(0, stepCount).map((_, i) =>
       setTimeout(() => {
-        setVisibleSteps((prev) => (prev.includes(i) ? prev : [...prev, i]))
+        if (!isReady) {
+          setVisibleSteps((prev) => (prev.includes(i) ? prev : [...prev, i]))
+        }
       }, i * 900)
     )
     return () => timers.forEach(clearTimeout)
-  }, [stepCount])
+  }, [stepCount, isReady])
 
-  // When agent responds: show final step, fade, notify parent
+  // When agent responds: reveal all remaining steps instantly, then show final
   useEffect(() => {
     if (!isReady) return
-    setShowFinal(true)
-    const fadeTimer = setTimeout(() => setIsComplete(true), 600)
-    const doneTimer = setTimeout(() => onComplete(), 1300)
+    // Instantly show all steps that haven't appeared yet
+    setVisibleSteps(Array.from({ length: stepCount }, (_, i) => i))
+    // Short pause so user sees all steps, then show verdict ready
+    const finalTimer = setTimeout(() => setShowFinal(true), 400)
+    const fadeTimer = setTimeout(() => setIsComplete(true), 400 + 900)
+    const doneTimer = setTimeout(() => onComplete(), 400 + 900 + 700)
     return () => {
+      clearTimeout(finalTimer)
       clearTimeout(fadeTimer)
       clearTimeout(doneTimer)
     }
-  }, [isReady, onComplete])
+  }, [isReady, onComplete, stepCount])
 
   const formatStepNum = (i: number) => String(i + 1).padStart(2, "0")
 
