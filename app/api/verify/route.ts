@@ -49,13 +49,67 @@ async function verifyHCaptcha(token: string): Promise<boolean> {
   }
 }
 
+async function fetchVirusTotal(domain: string, vtKey: string): Promise<Record<string, unknown> | null> {
+  try {
+    const res = await fetchWithTimeout(
+      `https://www.virustotal.com/api/v3/domains/${encodeURIComponent(domain)}`,
+      { headers: { 'x-apikey': vtKey } }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    const stats = data?.data?.attributes?.last_analysis_stats ?? {}
+    const categories = data?.data?.attributes?.categories ?? {}
+    return {
+      domain,
+      reputation: data?.data?.attributes?.reputation ?? null,
+      malicious: stats.malicious ?? 0,
+      suspicious: stats.suspicious ?? 0,
+      harmless: stats.harmless ?? 0,
+      categories: Object.values(categories).slice(0, 3),
+    }
+  } catch {
+    return null
+  }
+}
+
+async function fetchWhois(domain: string): Promise<Record<string, unknown> | null> {
+  try {
+    const res = await fetchWithTimeout(`https://rdap.org/domain/${encodeURIComponent(domain)}`)
+    if (!res.ok) return null
+    const data = await res.json()
+    const registrationEvent = (data.events ?? []).find(
+      (e: { eventAction: string; eventDate: string }) => e.eventAction === 'registration'
+    )
+    const createdAt: string | null = registrationEvent?.eventDate ?? null
+    const ageDays = createdAt
+      ? Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)
+      : null
+    const vcardArr = data.entities?.[0]?.vcardArray?.[1]
+    const fnEntry = Array.isArray(vcardArr)
+      ? vcardArr.find((v: unknown[]) => Array.isArray(v) && v[0] === 'fn')
+      : null
+    const countryEntry = Array.isArray(vcardArr)
+      ? vcardArr.find((v: unknown[]) => Array.isArray(v) && v[0] === 'adr')
+      : null
+    return {
+      domain,
+      registrar: fnEntry?.[3] ?? null,
+      createdAt,
+      ageDays,
+      freshDomain: ageDays !== null ? ageDays < 30 : null,
+      registrantCountry: countryEntry?.[1]?.['country-name'] ?? null,
+    }
+  } catch {
+    return null
+  }
+}
+
 const SYSTEM_PROMPT = `You are a Senior OSINT Officer specialized in disinformation detection.
 
 When given a URL or a news claim, your job is to:
 1. Search for the claim or URL using the tavily_search tool to find corroborating or contradicting sources
-2. If a domain is provided in the prompt, ALWAYS call virustotal_check AND whois_lookup on it before forming a verdict
-3. Analyze the results for factual discrepancies and infrastructure red flags
-4. Return a structured JSON verdict
+2. If infrastructure data is provided in the prompt, analyze it for red flags
+3. Return a structured JSON verdict
 
 Your verdict must ALWAYS be valid JSON with this exact shape:
 {
@@ -67,19 +121,10 @@ Your verdict must ALWAYS be valid JSON with this exact shape:
 }
 
 Rules:
-- ONLY if you called whois_lookup AND received real data: add these flags from the actual tool result:
-  * Domain age: "Domain registered X days ago (since YEAR)" — use the exact ageDays value from the tool result
-  * Registrar: "Registrar: [registrar name]" — only if registrar field is not null
-  * If ageDays < 30: also set verdict to SUSPICIOUS
-- ONLY if you called virustotal_check AND received real data: add these flags using EXACT numbers from the tool result JSON:
-  * Reputation: "VirusTotal: clean — [exact malicious value] malicious, [exact harmless value] harmless votes" — use the EXACT numbers returned, never invent them
-  * Categories: "Hosting category: [categories]" — ONLY if categories array has at least one item. If categories is empty array [], do NOT add this flag.
-- ABSOLUTE RULE: if you did NOT call whois_lookup, you MUST NOT add any flag mentioning domain age, registration date, or domain history. Zero exceptions.
-- ABSOLUTE RULE: if you did NOT call virustotal_check, you MUST NOT add any flag mentioning VirusTotal, malicious votes, or reputation. Zero exceptions.
-- ABSOLUTE RULE: if the input was plain text with no URL, do NOT add any infrastructure flags whatsoever.
-- ONLY if you called whois_lookup: you MUST add "Registrant country: [country code]" if registrantCountry is not null. You MUST add "Registrar: [name]" if registrar is not null.
-- ONLY if you called virustotal_check: you MUST add "Hosting category: [categories]" if categories array is not empty. Never skip this.
-- ALWAYS scan the Tavily search result URLs for known fact-checking domains. If any result URL contains: maldita.es, newtral.es, snopes.com, factcheck.org, afpfactcheck.com, politifact.com, verificat.cat, fullfact.org, chequeado.com — add flag "Fact-checked by: [domain name]". This is a positive signal.
+- If WHOIS data is provided in the prompt: add "Domain registered [ageDays] days ago (since [year])" using exact values. Add "Registrar: [name]" if not null. Add "Registrant country: [country]" if not null. If ageDays < 30 set verdict SUSPICIOUS.
+- If VirusTotal data is provided in the prompt: add "VirusTotal: clean — [malicious] malicious, [harmless] harmless votes" using EXACT numbers from the data. Add "Hosting category: [categories]" ONLY if categories list is not empty.
+- ABSOLUTE RULE: if no infrastructure data was provided in the prompt, do NOT add any domain, VirusTotal or registrar flags. Never invent infrastructure data.
+- ALWAYS scan Tavily result URLs. If any contains: maldita.es, newtral.es, snopes.com, factcheck.org, afpfactcheck.com, politifact.com, verificat.cat, fullfact.org, chequeado.com — add "Fact-checked by: [domain]".
 - If multiple credible sources corroborate the claim, lean toward REAL
 - If no sources found at all, return UNVERIFIABLE
 - Always use the search tool before making a verdict — never guess
@@ -108,16 +153,34 @@ export async function POST(req: NextRequest) {
     if (!vtKey) console.warn('VIRUSTOTAL_API_KEY is not set — domain reputation checks will be skipped')
 
     const domain = extractDomain(input)
+
+    // Run VT + WHOIS in parallel before the agent — guaranteed, no model discretion
+    const [vtData, whoisData, geoData] = domain
+      ? await Promise.all([
+          vtKey ? fetchVirusTotal(domain, vtKey) : Promise.resolve(null),
+          fetchWhois(domain),
+          getGeoData(domain),
+        ])
+      : [null, null, null]
+
+    // Build prompt with infra data already injected
+    const infraSection = domain && (vtData || whoisData)
+      ? `\n\n--- Infrastructure Analysis (use these exact values for flags) ---` +
+        (whoisData ? `\nWHOIS data: ${JSON.stringify(whoisData)}` : '') +
+        (vtData ? `\nVirusTotal data: ${JSON.stringify(vtData)}` : '') +
+        `\n---`
+      : ''
+
     const prompt = domain
-      ? `Verify the following: ${input}\n\nExtracted domain: ${domain}\nYou MUST call BOTH virustotal_check("${domain}") AND whois_lookup("${domain}") before forming your verdict. These are mandatory steps, not optional.`
-      : `Verify the following: ${input}\n\nIMPORTANT: This is plain text, NOT a URL. Do NOT call virustotal_check or whois_lookup. Do NOT add any infrastructure or domain flags.`
+      ? `Verify the following: ${input}\n\nExtracted domain: ${domain}${infraSection}`
+      : `Verify the following: ${input}\n\nIMPORTANT: This is plain text with no URL. Do NOT add any infrastructure or domain flags.`
 
     const { text, steps } = await generateText({
       model: groq('llama-3.3-70b-versatile'),
       system: SYSTEM_PROMPT,
       prompt,
       // @ts-ignore
-      maxSteps: 7,
+      maxSteps: 5,
       tools: {
         tavily_search: tool({
           description: 'Search the web for real-time information to verify claims or investigate URLs.',
@@ -157,71 +220,6 @@ export async function POST(req: NextRequest) {
           },
         }),
 
-        virustotal_check: tool({
-          description: 'Check a domain\'s reputation and malware history via VirusTotal.',
-          parameters: z.object({
-            domain: z.string().describe('The domain to check, e.g. "suspicious-news.net"'),
-          }),
-          execute: async ({ domain }) => {
-            if (!vtKey) return { error: 'VirusTotal API key not configured' }
-            try {
-              const res = await fetchWithTimeout(
-                `https://www.virustotal.com/api/v3/domains/${encodeURIComponent(domain)}`,
-                { headers: { 'x-apikey': vtKey } }
-              )
-              if (!res.ok) return { error: `VirusTotal error: ${res.status}` }
-              const data = await res.json()
-              const stats = data?.data?.attributes?.last_analysis_stats ?? {}
-              const categories = data?.data?.attributes?.categories ?? {}
-              return {
-                domain,
-                reputation: data?.data?.attributes?.reputation ?? null,
-                malicious: stats.malicious ?? 0,
-                suspicious: stats.suspicious ?? 0,
-                harmless: stats.harmless ?? 0,
-                categories: Object.values(categories).slice(0, 3),
-              }
-            } catch (err: unknown) {
-              const isTimeout = err instanceof Error && err.name === 'AbortError'
-              return { error: isTimeout ? 'VirusTotal timeout' : `VirusTotal error: ${String(err)}` }
-            }
-          },
-        }),
-
-        whois_lookup: tool({
-          description: 'Look up domain registration data via RDAP to detect freshly registered fake news outlets.',
-          parameters: z.object({
-            domain: z.string().describe('The domain to look up, e.g. "suspicious-news.net"'),
-          }),
-          execute: async ({ domain }) => {
-            try {
-              const res = await fetchWithTimeout(`https://rdap.org/domain/${encodeURIComponent(domain)}`)
-              if (!res.ok) return { error: `RDAP error: ${res.status}` }
-              const data = await res.json()
-              const registrationEvent = (data.events ?? []).find(
-                (e: { eventAction: string; eventDate: string }) => e.eventAction === 'registration'
-              )
-              const createdAt: string | null = registrationEvent?.eventDate ?? null
-              const ageDays = createdAt
-                ? Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)
-                : null
-              const vcardArr = data.entities?.[0]?.vcardArray?.[1]
-              const fnEntry = Array.isArray(vcardArr)
-                ? vcardArr.find((v: unknown[]) => Array.isArray(v) && v[0] === 'fn')
-                : null
-              return {
-                domain,
-                registrar: fnEntry?.[3] ?? null,
-                createdAt,
-                ageDays,
-                freshDomain: ageDays !== null ? ageDays < 30 : null,
-              }
-            } catch (err: unknown) {
-              const isTimeout = err instanceof Error && err.name === 'AbortError'
-              return { error: isTimeout ? 'RDAP timeout' : `RDAP error: ${String(err)}` }
-            }
-          },
-        }),
       },
     })
 
@@ -257,6 +255,7 @@ export async function POST(req: NextRequest) {
       steps: steps.length,
       infraChecked: domain !== null,
       domain: domain ?? undefined,
+      geoData: geoData ?? undefined,
     })
 
   } catch (err) {
