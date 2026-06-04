@@ -1,6 +1,6 @@
-# FACT·O·CHECKER
+# FACT·O·CHECKER 🔍
 
-**Autonomous OSINT & Narrative Intelligence Agent**
+**Autonomous OSINT & Narrative Intelligence Agent** 🤖
 
 Fact·O·Checker is a production-grade news verification system that combines deterministic infrastructure analysis with an autonomous AI reasoning agent. Paste any news headline, claim, or URL and receive a structured verdict backed by real-time web search, domain reputation data, and WHOIS registration analysis.
 
@@ -8,11 +8,11 @@ Fact·O·Checker is a production-grade news verification system that combines de
 
 ---
 
-## How It Works: Hybrid Agentic Architecture
+## ✨ How It Works: Hybrid Agentic Architecture
 
 Fact·O·Checker uses a deliberate two-phase architecture that maximises reliability without sacrificing autonomy.
 
-### Phase 1 — Deterministic Pre-Processing
+### ⚙️ Phase 1 — Deterministic Pre-Processing
 
 When the input contains a URL, the system handler immediately extracts the domain and fires three infrastructure checks **in parallel**, before the AI agent is even initialised:
 
@@ -40,7 +40,7 @@ VirusTotal data: {"malicious":0,"harmless":62,"categories":["news and media"],..
 ---
 ```
 
-### Phase 2 — Agentic Synthesis (Llama-3.3-70b via Groq)
+### ⚙️ Phase 2 — Agentic Synthesis (Llama-3.3-70b via Groq)
 
 With the infrastructure data already in context, the agent focuses on what it does best: **autonomous web research and narrative analysis**.
 
@@ -54,7 +54,7 @@ The agent runs a ReAct (Reasoning + Acting) loop using the Vercel AI SDK's `gene
 
 The agent decides autonomously how many searches to run, what angles to investigate, and when it has enough evidence to deliver a verdict.
 
-### Why This Hybrid Approach
+### 🔀 Why This Hybrid Approach
 
 | Concern | Pure Agentic | Pure Deterministic | Hybrid (Fact·O·Checker) |
 |---|---|---|---|
@@ -68,7 +68,7 @@ The model is still the reasoning engine. It decides what to search, how many tim
 
 ---
 
-## Verdict System
+## ⚖️ Verdict System
 
 Each verification returns one of four verdicts:
 
@@ -83,11 +83,11 @@ Alongside the verdict: a confidence score (0–100), a plain-language summary in
 
 ---
 
-## Flag System
+## 🚩 Flag System
 
 Flags are colour-coded by severity:
 
-**Green — informational/positive**
+** 🟢 Green — informational/positive**
 - `Domain registered X days ago (since YEAR)`
 - `Registrar: [name]`
 - `Registrant country: [code]`
@@ -95,17 +95,17 @@ Flags are colour-coded by severity:
 - `Hosting category: [news / media / etc]`
 - `Fact-checked by: maldita.es` *(detected from Tavily results)*
 
-**Amber — caution**
+** 🟡 Amber — caution**
 - Conflicting source quality
 - Unverifiable claims
 
-**Red — critical**
+** 🔴 Red — critical**
 - `Domain registered less than 30 days ago ⚠️`
 - `VirusTotal: X malicious votes detected ⚠️`
 
 ---
 
-## Stack
+## 🛠️ Stack
 
 | Layer | Technology | Notes |
 |---|---|---|
@@ -122,14 +122,14 @@ Flags are colour-coded by severity:
 
 ---
 
-## Getting Started
+## </> Getting Started
 
 ### Prerequisites
 
 - Node.js 18+
 - Accounts for: [Groq](https://console.groq.com), [Tavily](https://tavily.com), [VirusTotal](https://virustotal.com), [hCaptcha](https://hcaptcha.com)
 
-### Installation
+### 📦 Installation
 
 ```bash
 git clone https://github.com/aisurf3r/Fact-o-checker.git
@@ -137,7 +137,7 @@ cd Fact-o-checker
 npm install
 ```
 
-### Environment Variables
+### 🗝️ Environment Variables
 
 Create `.env.local` in the project root:
 
@@ -148,7 +148,7 @@ VIRUSTOTAL_API_KEY=     # VirusTotal → API Key
 HCAPTCHA_SECRET_KEY=    # hCaptcha dashboard → Secret Key
 ```
 
-### Run Locally
+### 🚀 Run Locally
 
 ```bash
 npm run dev
@@ -156,7 +156,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-> **Note:** The agent makes outbound HTTP requests to Groq, Tavily, VirusTotal and RDAP. These calls require a real server environment. The Bolt/StackBlitz WebContainer may block external API calls due to CORS related behaviour — deploy to server enviroment for full functionality.
+> **Note:** 📝 The agent makes outbound HTTP requests to Groq, Tavily, VirusTotal and RDAP. These calls require a real server environment. The Bolt/StackBlitz WebContainer may block external API calls due to CORS related behaviour — deploy to server enviroment for full functionality.
 
 ---
 
@@ -195,7 +195,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ---
 
-## Free Tier Limits
+## 🆓 Free Tier Limits
 
 | Service | Free Tier | Bottleneck |
 |---|---|---|
@@ -207,7 +207,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ---
 
-## Project Structure
+## 🏗️  Project Structure
 
 ```
 app/
@@ -221,7 +221,7 @@ app/
 
 ---
 
-## Design System
+## 🎨 Design System
 
 The interface follows a **Modernist Glassmorphic Light** aesthetic:
 
@@ -238,7 +238,7 @@ Monospace:    Consolas (data fields, domain names, API values)
 
 ---
 
-## Roadmap
+## 🌐 Roadmap
 
 | Phase | Status | Description |
 |---|---|---|
@@ -249,7 +249,7 @@ Monospace:    Consolas (data fields, domain names, API values)
 
 ---
 
-## License
+## 📝 License
 
 MIT
 
