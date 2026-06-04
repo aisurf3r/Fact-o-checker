@@ -155,13 +155,12 @@ export async function POST(req: NextRequest) {
     const domain = extractDomain(input)
 
     // Run VT + WHOIS in parallel before the agent — guaranteed, no model discretion
-    const [vtData, whoisData, geoData] = domain
+    const [vtData, whoisData] = domain
       ? await Promise.all([
           vtKey ? fetchVirusTotal(domain, vtKey) : Promise.resolve(null),
           fetchWhois(domain),
-          getGeoData(domain),
         ])
-      : [null, null, null]
+      : [null, null]
 
     // Build prompt with infra data already injected
     const infraSection = domain && (vtData || whoisData)
@@ -255,7 +254,6 @@ export async function POST(req: NextRequest) {
       steps: steps.length,
       infraChecked: domain !== null,
       domain: domain ?? undefined,
-      geoData: geoData ?? undefined,
     })
 
   } catch (err) {
