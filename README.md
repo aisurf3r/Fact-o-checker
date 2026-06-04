@@ -4,6 +4,8 @@
 
 Fact·O·Checker is a production-grade news verification system that combines deterministic infrastructure analysis with an autonomous AI reasoning agent. Paste any news headline, claim, or URL and receive a structured verdict backed by real-time web search, domain reputation data, and WHOIS registration analysis.
 
+<img width="1064" height="957" alt="{E64508A4-7C0B-400A-AB1E-FCEDF781757A}" src="https://github.com/user-attachments/assets/7610dbd1-7f4a-4b20-a60c-e56a7bf7d88f" />
+
 ---
 
 ## How It Works: Hybrid Agentic Architecture
@@ -20,11 +22,11 @@ URL input detected
        ▼
 extractDomain()  ──────────────────────────────────────────────────
        │                                                           │
-       ├── fetchVirusTotal(domain)  ← VirusTotal API v3           │
-       ├── fetchWhois(domain)       ← RDAP (ICANN standard)       │  Promise.all
-       └── ──────────────────────────────────────────────────────►│
+       ├── fetchVirusTotal(domain)  ← VirusTotal API v3            │
+       ├── fetchWhois(domain)       ← RDAP (ICANN standard)        │  Promise.all
+       └── ──────────────────────────────────────────────────────► │
                                                                    │
-                    Results injected into agent prompt ◄──────────┘
+                    Results injected into agent prompt ◄───────────┘
 ```
 
 These checks are **always executed** when a URL is present — they do not depend on the AI model deciding to call them. This eliminates a key failure mode in purely agentic systems: model discretion over whether to invoke tools.
@@ -154,7 +156,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-> **Note:** The agent makes outbound HTTP requests to Groq, Tavily, VirusTotal and RDAP. These calls require a real server environment. The Bolt/StackBlitz WebContainer blocks external API calls — deploy to Vercel for full functionality.
+> **Note:** The agent makes outbound HTTP requests to Groq, Tavily, VirusTotal and RDAP. These calls require a real server environment. The Bolt/StackBlitz WebContainer may block external API calls due to CORS related behaviour — deploy to server enviroment for full functionality.
 
 ---
 
