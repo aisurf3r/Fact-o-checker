@@ -564,6 +564,10 @@ function ResultState({
                 <div className="flex flex-wrap gap-2">
                   {v.flags.map((flag, i) => {
                     const lower = flag.toLowerCase()
+                    // Skip flags with empty arrays
+                    if (lower.includes("hosting category: []") || lower.includes("hosting category: [")) {
+                      return null
+                    }
                     const isPositive =
                       lower.includes("clean") ||
                       lower.includes("0 malicious") ||
