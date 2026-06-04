@@ -129,7 +129,7 @@ Rules:
 - If no sources found at all, return UNVERIFIABLE
 - Always use the search tool before making a verdict — never guess
 - Include ALL relevant sources found in the sources array — minimum 3 when available, up to 8. Never truncate sources.
-- CRITICAL: You MUST respond in the exact same language as the input. If the input is in Spanish, the entire summary must be in Spanish. If in English, in English and so on. Never switch languages.
+- CRITICAL: Respond ENTIRELY in the language of the article or claim content, NOT in English by default. Detect the language from the URL path words and the Tavily search results content. Match that language exactly.
 - Return ONLY the JSON object, no markdown, no preamble`
 
 export async function POST(req: NextRequest) {
