@@ -40,7 +40,7 @@ VirusTotal data: {"malicious":0,"harmless":62,"categories":["news and media"],..
 ---
 ```
 
-### ⚙️ Phase 2 — Agentic Synthesis (Llama-3.3-70b via Groq)
+### ⚙️ Phase 2 — Agentic Synthesis (gpt-oss-120b via Groq)
 
 With the infrastructure data already in context, the agent focuses on what it does best: **autonomous web research and narrative analysis**.
 
@@ -110,7 +110,7 @@ Flags are colour-coded by severity:
 | Layer | Technology | Notes |
 |---|---|---|
 | Framework | Next.js 14 (App Router) | Serverless-first |
-| AI Reasoning | Llama-3.3-70b | Via Groq — fast inference, generous free tier |
+| AI Reasoning | gpt-oss-120b | Via Groq — fast inference, generous free tier |
 | AI SDK | Vercel AI SDK (`ai@4.3.19`) | `generateText` + `maxSteps` ReAct loop |
 | Web Search | Tavily Search API | Optimised for LLM agents; 1,000 searches/month free |
 | Domain Reputation | VirusTotal API v3 | 500 req/day free |
@@ -199,7 +199,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 | Service | Free Tier | Bottleneck |
 |---|---|---|
-| Groq (Llama-3.3-70b) | 1,000 req/day | Not critical for personal use |
+| Groq (gpt-oss-120b) | 1,000 req/day | Not critical for personal use |
 | Tavily | **1,000 searches/month** | Primary bottleneck (~2 searches/verification = ~500 verifications/month) |
 | VirusTotal | 500 req/day | Not critical |
 | RDAP | Unlimited | No key required |
@@ -255,4 +255,4 @@ MIT
 
 ---
 
-<sub>Developer: [aisurf3r](https://github.com/aisurf3r) · Brain: Llama-3.3-70b via Groq · Contact: aisurf3r@gmail.com</sub>
+<sub>Developer: [aisurf3r](https://github.com/aisurf3r) · Brain: gpt-oss-120b via Groq · Contact: aisurf3r@gmail.com</sub>
