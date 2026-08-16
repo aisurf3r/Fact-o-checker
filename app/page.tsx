@@ -311,7 +311,7 @@ function IdleState({ onSubmit }: { onSubmit: (input: string, token: string) => v
         </div>
 
         <p className="text-xs text-slate-400 font-light text-center max-w-md px-2 flex items-center justify-center gap-2 flex-wrap">
-          <span>Powered by Llama-3.3-70b · Tavily Search · VirusTotal · RDAP</span>
+          <span>Powered by gpt-oss-120b · Tavily Search · VirusTotal · RDAP</span>
           <span className="flex items-center gap-2">
             <a
               href="https://github.com/aisurf3r/Fact-o-checker"
