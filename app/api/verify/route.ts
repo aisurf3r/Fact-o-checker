@@ -132,6 +132,8 @@ Rules:
 - CRITICAL: Respond ENTIRELY in the language of the article or claim content, NOT in English by default. Detect the language from the URL path words and the Tavily search results content. Match that language exactly.
 - Return ONLY the JSON object, no markdown, no preamble`
 
+const MODEL_ID = process.env.GROQ_MODEL_ID || 'openai/gpt-oss-120b'
+
 export async function POST(req: NextRequest) {
   try {
     const { input, hcaptchaToken } = await req.json()
@@ -175,7 +177,7 @@ export async function POST(req: NextRequest) {
       : `Verify the following: ${input}\n\nIMPORTANT: This is plain text with no URL. Do NOT add any infrastructure or domain flags.`
 
     const { text, steps } = await generateText({
-      model: groq('llama-3.3-70b-versatile'),
+      model: groq(MODEL_ID),
       system: SYSTEM_PROMPT,
       prompt,
       // @ts-ignore
